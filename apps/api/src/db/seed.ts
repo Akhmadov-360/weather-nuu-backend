@@ -1,0 +1,166 @@
+import "dotenv/config";
+import { db, pool } from "./client.js";
+import { sensorData } from "./schema.js";
+import { env } from "../env.js";
+import type { SensorSource } from "@weather/contracts";
+
+/**
+ * Fills a LOCAL database with synthetic history so the dashboard, charts and
+ * export have something to show without access to the real server.
+ *
+ *   pnpm db:seed                 # only if sensor_data is empty
+ *   pnpm db:seed --force         # wipe sensor_data and generate again
+ *   pnpm db:seed --days=14       # history length (default 30)
+ *
+ * Deterministic (fixed PRNG seed) so everyone sees the same curves. Each
+ * source also gets one deliberate offline window, to exercise the gap
+ * handling in charts and export.
+ */
+
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "db"]);
+
+function assertLocalDatabase(): void {
+  const host = new URL(env.DATABASE_URL).hostname;
+  if (!LOCAL_HOSTS.has(host)) {
+    console.error(
+      `Refusing to seed: DATABASE_URL host "${host}" is not a local database ` +
+        `(allowed: ${[...LOCAL_HOSTS].join(", ")}). This script writes fake data and can wipe the table.`,
+    );
+    process.exit(1);
+  }
+}
+
+function argValue(name: string): string | undefined {
+  const prefix = `--${name}=`;
+  return process.argv.find((a) => a.startsWith(prefix))?.slice(prefix.length);
+}
+
+function mulberry32(seed: number): () => number {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type Profile = {
+  tempMean: number;
+  tempAmp: number;
+  humMean: number;
+  humAmp: number;
+  pressMean: number;
+  mq5Base: number;
+  mq3Base: number;
+  /** Offline window ending `endsDaysAgo` days before now. */
+  gap: { endsDaysAgo: number; hours: number };
+};
+
+const PROFILES: Record<SensorSource, Profile> = {
+  room: {
+    tempMean: 24,
+    tempAmp: 1.8,
+    humMean: 38,
+    humAmp: 6,
+    pressMean: 962,
+    mq5Base: 30,
+    mq3Base: 3,
+    gap: { endsDaysAgo: 9, hours: 10 },
+  },
+  street: {
+    tempMean: 17,
+    tempAmp: 7,
+    humMean: 45,
+    humAmp: 18,
+    pressMean: 962,
+    mq5Base: 22,
+    mq3Base: 2,
+    gap: { endsDaysAgo: 2, hours: 6 },
+  },
+};
+
+const STEP_MS = 5 * 60_000;
+const BATCH_SIZE = 1000;
+const DAY_MS = 24 * 60 * 60_000;
+
+function generate(source: SensorSource, days: number, now: number, rand: () => number) {
+  const p = PROFILES[source];
+  const end = Math.floor(now / STEP_MS) * STEP_MS;
+  const start = end - days * DAY_MS;
+  const gapEnd = end - p.gap.endsDaysAgo * DAY_MS;
+  const gapStart = gapEnd - p.gap.hours * 60 * 60_000;
+
+  const rows: (typeof sensorData.$inferInsert)[] = [];
+  for (let t = start; t <= end; t += STEP_MS) {
+    if (t >= gapStart && t < gapEnd) continue;
+
+    const date = new Date(t);
+    const hour = date.getUTCHours() + date.getUTCMinutes() / 60;
+    const phase = (2 * Math.PI * (hour - 4)) / 24; // daily peak around 10:00 UTC
+    const daily = Math.sin(phase);
+    const slow = Math.sin((2 * Math.PI * (t - start)) / (9 * DAY_MS));
+
+    const temp = p.tempMean + p.tempAmp * daily + 1.2 * slow + (rand() - 0.5) * 0.3;
+    const hum = p.humMean - p.humAmp * daily + 4 * slow + (rand() - 0.5) * 1.5;
+    const press = p.pressMean + 4 * Math.sin((2 * Math.PI * (t - start)) / (3.5 * DAY_MS)) + (rand() - 0.5) * 0.4;
+    const spike = rand() < 0.01 ? rand() * 40 : 0;
+    const mq5 = Math.round(p.mq5Base + 6 * Math.max(0, daily) + spike + (rand() - 0.5) * 4);
+    const mq3 = Math.max(0, Math.round(p.mq3Base + (rand() - 0.5) * 3));
+
+    rows.push({
+      source,
+      fusedTemp: Math.round(temp * 100) / 100,
+      hum: Math.round(hum * 10) / 10,
+      bmpPress: Math.round(press * 100) / 100,
+      mq5: Math.max(0, mq5),
+      mq3,
+      recordedAt: date,
+      isSnapshot: false,
+    });
+  }
+  return rows;
+}
+
+async function main() {
+  assertLocalDatabase();
+
+  const force = process.argv.includes("--force");
+  const days = Number(argValue("days") ?? 30);
+  if (!Number.isFinite(days) || days < 1 || days > 365) {
+    console.error("--days must be a number between 1 and 365");
+    process.exit(1);
+  }
+
+  const existing = await pool.query<{ n: string }>("SELECT count(*) AS n FROM sensor_data");
+  const count = Number(existing.rows[0]!.n);
+
+  if (count > 0 && !force) {
+    console.log(`sensor_data already has ${count} rows — skipping seed (use --force to regenerate).`);
+    await pool.end();
+    return;
+  }
+  if (force) {
+    await pool.query("TRUNCATE sensor_data RESTART IDENTITY");
+  }
+
+  const rand = mulberry32(42);
+  const now = Date.now();
+  let total = 0;
+
+  for (const source of ["room", "street"] as const) {
+    const rows = generate(source, days, now, rand);
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      await db.insert(sensorData).values(rows.slice(i, i + BATCH_SIZE));
+    }
+    total += rows.length;
+    console.log(`seeded ${rows.length} rows for "${source}"`);
+  }
+
+  console.log(`Done: ${total} rows, ${days} days of history ending now.`);
+  await pool.end();
+}
+
+main().catch((err) => {
+  console.error("Seed failed:", err);
+  process.exit(1);
+});

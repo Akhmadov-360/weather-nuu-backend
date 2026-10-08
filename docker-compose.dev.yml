@@ -1,0 +1,69 @@
+# LOCAL development stack: Postgres + API (+ optional device simulator).
+# Not used in production — the server runs apps/api/docker-compose.yml.
+#
+#   docker compose -f docker-compose.dev.yml up --build            # db + api (seeded)
+#   docker compose -f docker-compose.dev.yml --profile live up --build   # + fake devices
+#   docker compose -f docker-compose.dev.yml down -v               # stop and wipe the DB
+name: weather-local
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: weather
+      POSTGRES_PASSWORD: weather
+      POSTGRES_DB: weather
+    ports:
+      # Uncommon host port so it doesn't clash with a Postgres you already run.
+      # Busy anyway? Set DB_PORT in your shell or in a .env file next to this file.
+      - "${DB_PORT:-55432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weather -d weather"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://weather:weather@db:5432/weather
+      PORT: 8002
+      HOST: 0.0.0.0
+      CORS_ORIGIN: http://localhost:5173
+      # Local-only value. The real key lives in the server's .env, never in git.
+      INGEST_API_KEY: local-dev-only-key-0123456789abcdef
+      LOG_LEVEL: info
+    ports:
+      # The frontend dev proxy expects 8002; override with API_PORT only if it's taken.
+      - "${API_PORT:-8002}:8002"
+    # Apply migrations, seed fake history if the table is empty, then start.
+    command: sh -c "pnpm db:migrate && pnpm db:seed && pnpm exec tsx src/server.ts"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8002/v1/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  sim:
+    profiles: ["live"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_URL: http://api:8002
+      INGEST_API_KEY: local-dev-only-key-0123456789abcdef
+    command: pnpm sim
+
+volumes:
+  pgdata:

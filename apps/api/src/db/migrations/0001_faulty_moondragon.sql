@@ -1,0 +1,1 @@
+ALTER TABLE "sensor_data" ADD COLUMN "is_snapshot" boolean DEFAULT false NOT NULL;

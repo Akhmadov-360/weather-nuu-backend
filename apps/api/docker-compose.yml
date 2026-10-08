@@ -1,0 +1,29 @@
+services:
+  api-new:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    image: weather-api-new:latest
+    container_name: weather-api-new
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    env_file:
+      - .env
+    environment:
+      PORT: 8002
+      HOST: 0.0.0.0
+    networks:
+      - cansat_default
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8002/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  cansat_default:
+    # Reuses the existing network that weather-db already runs on instead of
+    # creating a new one.
+    external: true
