@@ -21,7 +21,7 @@
     "@weather/contracts": "workspace:*",
     "archiver": "^8.0.0",
     "dotenv": "^16.4.5",
-    "drizzle-orm": "^0.36.1",
+    "drizzle-orm": "^0.45.2",
     "exceljs": "^4.4.0",
     "fastify": "^5.0.0",
     "fastify-plugin": "^5.0.1",
