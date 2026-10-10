@@ -52,6 +52,8 @@ type Profile = {
   pressMean: number;
   mq5Base: number;
   mq3Base: number;
+  /** Baseline PM2.5 in µg/m³; absent for sources without a dust sensor (street). */
+  dustBase?: number;
   /** Offline window ending `endsDaysAgo` days before now. */
   gap: { endsDaysAgo: number; hours: number };
 };
@@ -65,6 +67,7 @@ const PROFILES: Record<SensorSource, Profile> = {
     pressMean: 962,
     mq5Base: 30,
     mq3Base: 3,
+    dustBase: 14,
     gap: { endsDaysAgo: 9, hours: 10 },
   },
   street: {
@@ -107,6 +110,17 @@ function generate(source: SensorSource, days: number, now: number, rand: () => n
     const mq5 = Math.round(p.mq5Base + 6 * Math.max(0, daily) + spike + (rand() - 0.5) * 4);
     const mq3 = Math.max(0, Math.round(p.mq3Base + (rand() - 0.5) * 3));
 
+    // Dust: a daily rhythm plus a slow "smoggy days" episode every ~11 days,
+    // so the map/charts show several AQI categories, not one flat colour.
+    let pm25: number | null = null;
+    let pm10: number | null = null;
+    if (p.dustBase !== undefined) {
+      const episode = Math.max(0, Math.sin((2 * Math.PI * (t - start)) / (11 * DAY_MS)));
+      const dust = p.dustBase * (1 + 2.2 * episode) + 3 * daily + (rand() - 0.5) * 4;
+      pm25 = Math.max(1, Math.round(dust));
+      pm10 = Math.max(pm25, Math.round(pm25 * 1.6 + (rand() - 0.5) * 6));
+    }
+
     rows.push({
       source,
       fusedTemp: Math.round(temp * 100) / 100,
@@ -114,6 +128,8 @@ function generate(source: SensorSource, days: number, now: number, rand: () => n
       bmpPress: Math.round(press * 100) / 100,
       mq5: Math.max(0, mq5),
       mq3,
+      pm25,
+      pm10,
       recordedAt: date,
       isSnapshot: false,
     });

@@ -30,7 +30,19 @@ function reading(source: "room" | "street") {
   const hour = new Date().getUTCHours() + new Date().getUTCMinutes() / 60;
   const daily = Math.sin((2 * Math.PI * (hour - 4)) / 24);
   const room = source === "room";
+  // Only the Room device has a dust sensor. About 1 read in 30 fails and the
+  // real firmware then posts 0/0 — reproduced here so the backend's handling
+  // of it can be seen working.
+  const dust = room
+    ? Math.random() < 0.03
+      ? { pm25: 0, pm10: 0 }
+      : (() => {
+          const pm25 = Math.max(1, Math.round(14 + 3 * daily + wobble(5)));
+          return { pm25, pm10: Math.round(pm25 * 1.6 + wobble(4)) };
+        })()
+    : {};
   return {
+    ...dust,
     fused_temp: +((room ? 24 + 1.8 * daily : 17 + 7 * daily) + wobble(0.3)).toFixed(2),
     hum: +((room ? 38 - 6 * daily : 45 - 18 * daily) + wobble(1.5)).toFixed(1),
     bmp_press: +(962 + wobble(0.6)).toFixed(2),

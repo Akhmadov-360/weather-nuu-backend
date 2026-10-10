@@ -76,7 +76,15 @@ async function fetchSensorPage(
   return rows.map((r) => ({
     id: r.id,
     recordedAt: r.recordedAt.toISOString(),
-    values: { hum: r.hum, bmpPress: r.bmpPress, mq5: r.mq5, mq3: r.mq3, fusedTemp: r.fusedTemp },
+    values: {
+      hum: r.hum,
+      bmpPress: r.bmpPress,
+      mq5: r.mq5,
+      mq3: r.mq3,
+      fusedTemp: r.fusedTemp,
+      pm25: r.pm25,
+      pm10: r.pm10,
+    },
   }));
 }
 

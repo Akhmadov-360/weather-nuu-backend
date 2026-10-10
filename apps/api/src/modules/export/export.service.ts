@@ -6,7 +6,9 @@ import type { SensorsRepo } from "../sensors/sensors.repo.js";
 import type { CansatRepo } from "../cansat/cansat.repo.js";
 
 export const EXPORT_COLUMNS: Record<ExportSource, string[]> = {
-  room: ["hum", "bmpPress", "mq5", "mq3", "fusedTemp"],
+  // Only Room has the dust sensor; street columns stay as they were so its
+  // exports don't gain two permanently empty columns.
+  room: ["hum", "bmpPress", "mq5", "mq3", "fusedTemp", "pm25", "pm10"],
   street: ["hum", "bmpPress", "mq5", "mq3", "fusedTemp"],
   cansat: ["temp", "pressure", "humidity", "accelX"],
 };

@@ -13,6 +13,8 @@ type ColumnKey =
   | "mq5"
   | "mq3"
   | "fusedTemp"
+  | "pm25"
+  | "pm10"
   | "temp"
   | "pressure"
   | "humidity"
@@ -46,8 +48,10 @@ const DICTS: Record<ExportLang, Dict> = {
     columns: {
       hum: "Влажность",
       bmpPress: "Давление",
-      mq5: "Углекислый газ (CO₂)",
-      mq3: "Аэрозоль (PM2.5)",
+      mq5: "Горючий газ, MQ-5 (LPG)",
+      mq3: "Пары спирта, MQ-3",
+      pm25: "Пыль PM2.5",
+      pm10: "Пыль PM10",
       fusedTemp: "Температура",
       temp: "Температура",
       pressure: "Давление",
@@ -60,7 +64,9 @@ const DICTS: Record<ExportLang, Dict> = {
       bmpPress: "гПа",
       pressure: "гПа",
       mq5: "ppm",
-      mq3: "мкг/м³",
+      mq3: "ppm",
+      pm25: "мкг/м³",
+      pm10: "мкг/м³",
       fusedTemp: "°C",
       temp: "°C",
       accelX: "м/с²",
@@ -82,8 +88,10 @@ const DICTS: Record<ExportLang, Dict> = {
     columns: {
       hum: "Namlik",
       bmpPress: "Bosim",
-      mq5: "Karbonat angidrid (CO₂)",
-      mq3: "Aerozol (PM2.5)",
+      mq5: "Yonuvchi gaz, MQ-5 (LPG)",
+      mq3: "Spirt bug'lari, MQ-3",
+      pm25: "Chang PM2.5",
+      pm10: "Chang PM10",
       fusedTemp: "Harorat",
       temp: "Harorat",
       pressure: "Bosim",
@@ -96,7 +104,9 @@ const DICTS: Record<ExportLang, Dict> = {
       bmpPress: "gPa",
       pressure: "gPa",
       mq5: "ppm",
-      mq3: "mkg/m³",
+      mq3: "ppm",
+      pm25: "mkg/m³",
+      pm10: "mkg/m³",
       fusedTemp: "°C",
       temp: "°C",
       accelX: "m/s²",
@@ -118,8 +128,10 @@ const DICTS: Record<ExportLang, Dict> = {
     columns: {
       hum: "Humidity",
       bmpPress: "Pressure",
-      mq5: "Carbon dioxide (CO₂)",
-      mq3: "Aerosol (PM2.5)",
+      mq5: "Combustible gas, MQ-5 (LPG)",
+      mq3: "Alcohol vapour, MQ-3",
+      pm25: "Dust PM2.5",
+      pm10: "Dust PM10",
       fusedTemp: "Temperature",
       temp: "Temperature",
       pressure: "Pressure",
@@ -132,7 +144,9 @@ const DICTS: Record<ExportLang, Dict> = {
       bmpPress: "hPa",
       pressure: "hPa",
       mq5: "ppm",
-      mq3: "μg/m³",
+      mq3: "ppm",
+      pm25: "μg/m³",
+      pm10: "μg/m³",
       fusedTemp: "°C",
       temp: "°C",
       accelX: "m/s²",

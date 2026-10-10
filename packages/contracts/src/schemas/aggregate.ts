@@ -109,6 +109,9 @@ export const AggregateBucketSchema = z.object({
   mq5: MetricStatsSchema,
   mq3: MetricStatsSchema,
   temp: MetricStatsSchema,
+  /** Dust sensor; all-null for sources without one (street). */
+  pm25: MetricStatsSchema,
+  pm10: MetricStatsSchema,
 });
 export type AggregateBucketRow = z.infer<typeof AggregateBucketSchema>;
 
