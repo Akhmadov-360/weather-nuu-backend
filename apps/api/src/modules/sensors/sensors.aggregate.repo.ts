@@ -37,6 +37,12 @@ type Row = {
   temp_avg: string | null;
   temp_min: number | null;
   temp_max: number | null;
+  pm25_avg: string | null;
+  pm25_min: number | null;
+  pm25_max: number | null;
+  pm10_avg: string | null;
+  pm10_min: number | null;
+  pm10_max: number | null;
 };
 
 function num(v: string | number | null): number | null {
@@ -66,7 +72,9 @@ export class SensorsAggregateRepo {
         AVG(bmp_press)  AS press_avg, MIN(bmp_press)  AS press_min, MAX(bmp_press)  AS press_max,
         AVG(mq5)        AS mq5_avg,   MIN(mq5)        AS mq5_min,   MAX(mq5)        AS mq5_max,
         AVG(mq3)        AS mq3_avg,   MIN(mq3)        AS mq3_min,   MAX(mq3)        AS mq3_max,
-        AVG(fused_temp) AS temp_avg,  MIN(fused_temp) AS temp_min,  MAX(fused_temp) AS temp_max
+        AVG(fused_temp) AS temp_avg,  MIN(fused_temp) AS temp_min,  MAX(fused_temp) AS temp_max,
+        AVG(pm25)       AS pm25_avg,  MIN(pm25)       AS pm25_min,  MAX(pm25)       AS pm25_max,
+        AVG(pm10)       AS pm10_avg,  MIN(pm10)       AS pm10_min,  MAX(pm10)       AS pm10_max
       FROM sensor_data
       WHERE source = ${params.source}
         AND "timestamp" >= ${params.from.toISOString()}::timestamptz
@@ -86,6 +94,8 @@ export class SensorsAggregateRepo {
       mq5:   { avg: num(r.mq5_avg),   min: num(r.mq5_min),   max: num(r.mq5_max) },
       mq3:   { avg: num(r.mq3_avg),   min: num(r.mq3_min),   max: num(r.mq3_max) },
       temp:  { avg: num(r.temp_avg),  min: num(r.temp_min),  max: num(r.temp_max) },
+      pm25:  { avg: num(r.pm25_avg),  min: num(r.pm25_min),  max: num(r.pm25_max) },
+      pm10:  { avg: num(r.pm10_avg),  min: num(r.pm10_min),  max: num(r.pm10_max) },
     }));
   }
 }

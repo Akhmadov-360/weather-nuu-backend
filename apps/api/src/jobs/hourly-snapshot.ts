@@ -48,6 +48,8 @@ export function registerHourlySnapshot(app: FastifyInstance) {
             mq5: lastReal.mq5,
             mq3: lastReal.mq3,
             fusedTemp: lastReal.fusedTemp,
+            pm25: lastReal.pm25,
+            pm10: lastReal.pm10,
             isSnapshot: true,
           });
         } catch (err) {

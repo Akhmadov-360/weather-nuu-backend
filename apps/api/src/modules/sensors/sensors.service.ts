@@ -1,6 +1,7 @@
 import { AppError, type SensorReading, type SensorReadingInput, type SensorSource } from "@weather/contracts";
 import type { SensorsRepo, SensorRow } from "./sensors.repo.js";
 import { decodeCursor, encodeCursor } from "../../lib/cursor.js";
+import { normalizePm } from "./pm.js";
 
 function toDto(row: SensorRow): SensorReading {
   return {
@@ -11,6 +12,8 @@ function toDto(row: SensorRow): SensorReading {
     mq5: row.mq5,
     mq3: row.mq3,
     fusedTemp: row.fusedTemp,
+    pm25: row.pm25,
+    pm10: row.pm10,
     recordedAt: row.recordedAt.toISOString(),
   };
 }
@@ -19,12 +22,15 @@ export class SensorsService {
   constructor(private readonly repo: SensorsRepo) {}
 
   async ingest(source: SensorSource, input: SensorReadingInput): Promise<SensorReading> {
+    const { pm25, pm10 } = normalizePm(input.pm25, input.pm10);
     const row = await this.repo.insert(source, {
       hum: input.hum ?? null,
       bmpPress: input.bmpPress ?? null,
       mq5: input.mq5 ?? null,
       mq3: input.mq3 ?? null,
       fusedTemp: input.fusedTemp ?? null,
+      pm25,
+      pm10,
     });
     return toDto(row);
   }

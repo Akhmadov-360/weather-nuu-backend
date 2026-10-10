@@ -32,6 +32,9 @@ export const SensorReadingInputSchema = z.preprocess((raw) => {
   mq5: z.number().finite().optional(),
   mq3: z.number().finite().optional(),
   fusedTemp: z.number().finite().optional(),
+  /** Dust sensor (µg/m³). Room firmware sends 0/0 when the sensor read fails — see sensors/pm.ts. */
+  pm25: z.number().finite().optional(),
+  pm10: z.number().finite().optional(),
 }));
 export type SensorReadingInput = z.infer<typeof SensorReadingInputSchema>;
 
@@ -48,6 +51,8 @@ export const SensorReadingSchema = z.object({
   mq5: z.number().nullable(),
   mq3: z.number().nullable(),
   fusedTemp: z.number().nullable(),
+  pm25: z.number().nullable(),
+  pm10: z.number().nullable(),
   recordedAt: z.string().datetime({ offset: true }),
 });
 export type SensorReading = z.infer<typeof SensorReadingSchema>;

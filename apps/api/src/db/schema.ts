@@ -17,6 +17,10 @@ export const sensorData = pgTable(
     mq5: integer("mq5"),
     mq3: integer("mq3"),
     fusedTemp: real("fused_temp"),
+    // Particulate matter from the Plantower PMS sensor (µg/m³). Only the
+    // Room device has one; NULL means "no reading", never "zero dust".
+    pm25: integer("pm25"),
+    pm10: integer("pm10"),
     // mode: "date" — the `pg` driver's own type parser returns a real Date
     // for timestamptz, so services get it directly instead of re-parsing
     // the raw wire string themselves (the exact class of fragile date
