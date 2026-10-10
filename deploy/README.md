@@ -59,5 +59,5 @@ SSH через Kerio VPN; пароли и ключи в репозиторий �
   старая настройка под прежний Python-бэкенд на порту 8001. nginx пишет предупреждение
   `conflicting server name "weather.nuu.uz" ... ignored` и использует `weather-nuu`. Ссылку можно
   удалить (`rm /etc/nginx/sites-enabled/weather.nuu.uz`), проверив `nginx -t`.
-- `gzip_types` не включает `text/css` и `image/svg+xml`: CSS отдаётся без сжатия.
-- Для файлов `assets/*` (в именах хеши) нет долгого кэширования (`Cache-Control: public, max-age=31536000, immutable`).
+- Сжатие CSS/SVG и долгий кэш `assets/*` включены 10.10.2026 (в конфиге: `gzip_types` в блоке сайта,
+  `location ^~ /assets/`, `Cache-Control: no-cache` для `index.html`).
