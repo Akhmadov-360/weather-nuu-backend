@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # Версия pnpm берётся из поля packageManager в package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  stack-smoke:
+    name: Local stack starts and answers
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start db + api (migrations and seed run on start)
+        run: docker compose -f docker-compose.dev.yml up -d --build --wait --wait-timeout 180
+      - name: Health and data endpoints respond
+        run: |
+          curl -fsS http://localhost:8002/v1/health
+          curl -fsS http://localhost:8002/v1/sensors/room/latest
+          curl -fsS "http://localhost:8002/v1/sensors/street/history?limit=3"
+      - name: Show API logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.dev.yml logs api
+      - name: Stop stack
+        if: always()
+        run: docker compose -f docker-compose.dev.yml down -v
