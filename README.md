@@ -105,8 +105,9 @@ apps/api/src/
 packages/contracts/   Zod-схемы, общие для бэкенда и фронтенда
 ```
 
-Подробный технический отчёт (проблемы старого бэкенда, решения, замеры) — в репозитории
-фронтенда: `weather-nuu/docs/PROJECT_REPORT.md`.
+Устройство API и правила добавления кода — в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); для ИИ-агентов —
+[AGENTS.md](AGENTS.md). Подробный технический отчёт (проблемы старого бэкенда, решения, замеры) — в
+репозитории фронтенда: `weather-nuu/docs/PROJECT_REPORT.md`.
 
 ## Полезно знать
 
