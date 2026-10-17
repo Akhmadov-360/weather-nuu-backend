@@ -18,7 +18,7 @@ docker compose -f docker-compose.dev.yml up --build
 ```
 
 Что произойдёт само: поднимется PostgreSQL, применятся миграции, база заполнится
-синтетической историей за 30 дней (2 датчика, с намеренными «дырами»), запустится API.
+синтетической историей за 90 дней (2 датчика, с намеренными «дырами», точка раз в 5 минут), запустится API.
 
 Проверка: http://localhost:8002/v1/health → `{"status":"ok","db":"ok"}`
 
@@ -65,7 +65,7 @@ pnpm sim                                              # (в другом тер�
 | `pnpm test:integration` | интеграционные тесты на настоящей Postgres (нужна база: `docker compose -f docker-compose.dev.yml up -d db`) |
 | `pnpm db:migrate` | применить миграции |
 | `pnpm db:generate` | создать миграцию после правки `schema.ts` |
-| `pnpm db:seed [--force] [--days=N]` | заполнить локальную БД тестовыми данными |
+| `pnpm db:seed [--force] [--days=N] [--anomalies]` | заполнить локальную БД тестовыми данными (по умолчанию 90 дней); `--anomalies` добавляет пропуски, выбросы и «залипание» в известных местах (список: `apps/api/seed-anomalies.manifest.json`) |
 | `pnpm sim` | имитатор датчиков, шлёт показания в локальный API |
 
 `db:seed` и `sim` **отказываются работать с чужими адресами** (только localhost/Docker) — случайно
