@@ -61,7 +61,8 @@ pnpm sim                                              # (в другом тер�
 |---------|-----------|
 | `pnpm dev` | запуск API с автоперезапуском |
 | `pnpm typecheck` | проверка типов (обязательна перед PR) |
-| `pnpm test` | модульные тесты (Vitest) |
+| `pnpm test` | модульные тесты (Vitest), без базы |
+| `pnpm test:integration` | интеграционные тесты на настоящей Postgres (нужна база: `docker compose -f docker-compose.dev.yml up -d db`) |
 | `pnpm db:migrate` | применить миграции |
 | `pnpm db:generate` | создать миграцию после правки `schema.ts` |
 | `pnpm db:seed [--force] [--days=N]` | заполнить локальную БД тестовыми данными |

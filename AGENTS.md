@@ -20,7 +20,8 @@ curl http://localhost:8002/v1/health                                   # {"statu
 
 ## Минимум, который нельзя пропускать
 
-* Перед «готово»: `pnpm typecheck` и `pnpm test` (то же запускает CI).
+* Перед «готово»: `pnpm typecheck`, `pnpm test` и, если меняли SQL или маршруты, `pnpm test:integration` (нужна
+  база: `docker compose -f docker-compose.dev.yml up -d db`); то же запускает CI.
 * Слои модуля: `routes → service → repo`, запросы к базе только в `repo`; схемы только в
   `packages/contracts` (Zod). Изменили схему, обновите типы и маппер во фронтенде.
 * `null` это «нет показания», не ноль; время только `timestamptz` (UTC), в API ISO-8601.
