@@ -1,4 +1,5 @@
 import type { ExportRow } from "@weather/contracts";
+import { gapBetween } from "@weather/timeseries";
 import type { ExportRawRow } from "./export.repo.js";
 
 /**
@@ -17,14 +18,9 @@ export async function* interleaveGaps(
 
   for await (const row of rows) {
     if (previous) {
-      const gapMs = new Date(row.recordedAt).getTime() - new Date(previous).getTime();
-      if (gapMs > thresholdMs) {
-        yield {
-          kind: "gap",
-          from: previous,
-          to: row.recordedAt,
-          approxMissingReadings: Math.max(0, Math.round(gapMs / thresholdMs) - 1),
-        };
+      const gap = gapBetween(new Date(previous).getTime(), new Date(row.recordedAt).getTime(), { thresholdMs });
+      if (gap) {
+        yield { kind: "gap", from: previous, to: row.recordedAt, approxMissingReadings: gap.approxMissing };
       }
     }
     yield { kind: "reading", recordedAt: row.recordedAt, values: row.values };
