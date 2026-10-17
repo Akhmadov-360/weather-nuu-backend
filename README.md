@@ -106,6 +106,7 @@ apps/api/src/
   lib/       курсоры, keyset-пагинация, выбор корзины агрегации (+ тесты)
   dev/       simulator.ts  (только для локальной разработки)
 packages/contracts/   Zod-схемы, общие для бэкенда и фронтенда
+packages/air-quality/ шкалы AQI и расчёт (чистый модуль, общие эталонные значения с фронтендом)
 ```
 
 Устройство API и правила добавления кода — в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); для ИИ-агентов —
