@@ -28,7 +28,7 @@ const MAX_SNAPSHOT_GAP_MS = 3 * 60 * 60 * 1000;
 export function registerHourlySnapshot(app: FastifyInstance) {
   const repo = new SensorsRepo(app.db);
 
-  cron.schedule(
+  const task = cron.schedule(
     "0 * * * *",
     async () => {
       for (const source of SOURCES) {
@@ -63,4 +63,9 @@ export function registerHourlySnapshot(app: FastifyInstance) {
     // on — matching that here, not the server's local clock.
     { timezone: "UTC" },
   );
+
+  // Without this the schedule outlives the app (tests that build and close the app would leave it running).
+  app.addHook("onClose", async () => {
+    task.stop();
+  });
 }
