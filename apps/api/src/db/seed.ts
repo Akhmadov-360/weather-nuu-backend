@@ -1,8 +1,11 @@
 import "dotenv/config";
+import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { db, pool } from "./client.js";
 import { sensorData } from "./schema.js";
 import { env } from "../env.js";
 import type { SensorSource } from "@weather/contracts";
+import { applyAnomalies, planAnomalies, type ManifestEntry, type SeedRow } from "./seed-anomalies.js";
 
 /**
  * Fills a LOCAL database with synthetic history so the dashboard, charts and
@@ -10,11 +13,17 @@ import type { SensorSource } from "@weather/contracts";
  *
  *   pnpm db:seed                 # only if sensor_data is empty
  *   pnpm db:seed --force         # wipe sensor_data and generate again
- *   pnpm db:seed --days=14       # history length (default 30)
+ *   pnpm db:seed --days=14       # history length (default 90)
+ *   pnpm db:seed --anomalies     # also plant gaps, outliers and frozen values at KNOWN times
  *
  * Deterministic (fixed PRNG seed) so everyone sees the same curves. Each
  * source also gets one deliberate offline window, to exercise the gap
- * handling in charts and export.
+ * handling in charts and export. One reading every 5 MINUTES (the real boards send about every
+ * 5 seconds): the history stays small, and code that expects a cadence takes it as a parameter.
+ *
+ * With --anomalies the exact times of everything planted are written to
+ * apps/api/seed-anomalies.manifest.json (git-ignored), so a detection algorithm can be scored
+ * against the truth. Synthetic data only: never use these curves as findings in the thesis.
  */
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "db"]);
@@ -84,16 +93,18 @@ const PROFILES: Record<SensorSource, Profile> = {
 
 const STEP_MS = 5 * 60_000;
 const BATCH_SIZE = 1000;
+const DEFAULT_DAYS = 90;
+const MANIFEST_PATH = fileURLToPath(new URL("../../seed-anomalies.manifest.json", import.meta.url));
 const DAY_MS = 24 * 60 * 60_000;
 
-function generate(source: SensorSource, days: number, now: number, rand: () => number) {
+function generate(source: SensorSource, days: number, now: number, rand: () => number): SeedRow[] {
   const p = PROFILES[source];
   const end = Math.floor(now / STEP_MS) * STEP_MS;
   const start = end - days * DAY_MS;
   const gapEnd = end - p.gap.endsDaysAgo * DAY_MS;
   const gapStart = gapEnd - p.gap.hours * 60 * 60_000;
 
-  const rows: (typeof sensorData.$inferInsert)[] = [];
+  const rows: SeedRow[] = [];
   for (let t = start; t <= end; t += STEP_MS) {
     if (t >= gapStart && t < gapEnd) continue;
 
@@ -131,7 +142,6 @@ function generate(source: SensorSource, days: number, now: number, rand: () => n
       pm25,
       pm10,
       recordedAt: date,
-      isSnapshot: false,
     });
   }
   return rows;
@@ -141,7 +151,8 @@ async function main() {
   assertLocalDatabase();
 
   const force = process.argv.includes("--force");
-  const days = Number(argValue("days") ?? 30);
+  const withAnomalies = process.argv.includes("--anomalies");
+  const days = Number(argValue("days") ?? DEFAULT_DAYS);
   if (!Number.isFinite(days) || days < 1 || days > 365) {
     console.error("--days must be a number between 1 and 365");
     process.exit(1);
@@ -163,13 +174,26 @@ async function main() {
   const now = Date.now();
   let total = 0;
 
+  const manifest: ManifestEntry[] = [];
+
   for (const source of ["room", "street"] as const) {
-    const rows = generate(source, days, now, rand);
+    let rows = generate(source, days, now, rand);
+    if (withAnomalies) {
+      const planned = planAnomalies({ endMs: now, stepMs: STEP_MS, days, source });
+      const applied = applyAnomalies(rows, planned);
+      rows = applied.rows;
+      manifest.push(...applied.manifest);
+    }
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       await db.insert(sensorData).values(rows.slice(i, i + BATCH_SIZE));
     }
     total += rows.length;
     console.log(`seeded ${rows.length} rows for "${source}"`);
+  }
+
+  if (withAnomalies) {
+    writeFileSync(MANIFEST_PATH, JSON.stringify({ generatedAt: new Date(now).toISOString(), stepMinutes: STEP_MS / 60_000, anomalies: manifest }, null, 2) + "\n");
+    console.log(`planted ${manifest.length} anomalies, list: ${MANIFEST_PATH}`);
   }
 
   console.log(`Done: ${total} rows, ${days} days of history ending now.`);
