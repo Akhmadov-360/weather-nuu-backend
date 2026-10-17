@@ -57,6 +57,7 @@ apps/api/src/
   dev/           simulator.ts: только для локальной разработки
 packages/contracts/   Zod-схемы запросов и ответов и события WebSocket, общие для API и фронтенда
 packages/air-quality/ шкалы AQI (US EPA 2024) и расчёт: чистый модуль; эталонные значения общие с фронтендом
+packages/timeseries/   пропуски во времени и приведение ряда к регулярной сетке (общее для экспорта, аналитики и карты)
 packages/{eslint-config,tsconfig}/
 deploy/               конфиг nginx и описание выкатки на боевой сервер
 ```
