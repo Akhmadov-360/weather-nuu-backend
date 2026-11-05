@@ -4,7 +4,7 @@
 Читать вместе с [README.md](../README.md) (запуск и команды) и [deploy/README.md](../deploy/README.md)
 (боевой сервер). Фронтенд лежит в репозитории `weather-nuu` и описан в его `docs/ARCHITECTURE.md`:
 если задание касается обеих частей, прочитайте оба документа. История решений и замеры: в
-`weather-nuu/docs/PROJECT_REPORT.md`.
+`weather-nuu/docs/thesis/PROJECT_REPORT.md`.
 
 ## 1. Что это
 
@@ -164,7 +164,7 @@ Vitest двух видов.
 схемы в `contracts/src/schemas/<имя>.ts` с экспортом из `index.ts`, регистрация в `app.ts`, таблицы в
 `db/schema.ts` и миграция, тесты. Целевая архитектура темы диплома (станции типа `own` и `external`,
 `GET /v1/stations`, `GET /v1/map/snapshot`, `GET /v1/stations/:id/history`, серверный расчёт AQI)
-описана в `weather-nuu/docs/PROJECT_REPORT.md`, разделы 11.2 и 11.3. Шкалы AQI вынесены в пакет `@weather/air-quality` (`packages/air-quality`): серверный расчёт, карта и
+описана в `weather-nuu/docs/thesis/PROJECT_REPORT.md`, разделы 11.2 и 11.3. Шкалы AQI вынесены в пакет `@weather/air-quality` (`packages/air-quality`): серверный расчёт, карта и
 аналитика берут категории и AQI только из него, свою шкалу писать нельзя. Совпадение с фронтендовой копией
 (`src/shared/lib/air-quality/`) гарантирует общий файл эталонных значений (см. README пакета).
 
@@ -184,7 +184,7 @@ Vitest двух видов.
 
 Над проектом работают три зоны: платформа (владелец), станции, внешние источники, карта (Тулешов) и
 аналитика (группа №7). У каждого каталога один автор. Полная таблица каталогов, правила, календарь и задания:
-[docs/tasks/README.md](https://github.com/Akhmadov-360/weather-nuu/blob/main/docs/tasks/README.md) в репозитории `weather-nuu`. Главное для бэкенда:
+[docs/team/README.md](https://github.com/Akhmadov-360/weather-nuu/blob/main/docs/team/README.md) в репозитории `weather-nuu`. Главное для бэкенда:
 
 * **Свои модули.** Тулешов: `modules/stations`, `modules/map`, `modules/sources`, схемы `station.ts` и `map.ts`.
   Группа №7: `modules/analytics-stats` и `modules/analytics-forecast` со своими схемами. Общие пакеты

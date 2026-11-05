@@ -113,7 +113,7 @@ packages/timeseries/   пропуски и регулярная сетка дл�
 
 Устройство API и правила добавления кода — в [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); для ИИ-агентов —
 [AGENTS.md](AGENTS.md). Подробный технический отчёт (проблемы старого бэкенда, решения, замеры) — в
-репозитории фронтенда: `weather-nuu/docs/PROJECT_REPORT.md`.
+репозитории фронтенда: `weather-nuu/docs/thesis/PROJECT_REPORT.md`.
 
 ## Полезно знать
 
