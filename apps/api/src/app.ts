@@ -10,7 +10,7 @@ import { deviceAuthPlugin } from "./plugins/device-auth.js";
 import { sensorsRoutes } from "./modules/sensors/sensors.routes.js";
 import { cansatRoutes } from "./modules/cansat/cansat.routes.js";
 import { exportRoutes } from "./modules/export/export.routes.js";
-import { assistantRoutes } from "./modules/assistant/assistant.routes.js";
+import { assistantRoutes } from "./modules/assistant/assistant.plugin.js";
 import { healthRoutes } from "./modules/health/health.routes.js";
 import { registerHourlySnapshot } from "./jobs/hourly-snapshot.js";
 
