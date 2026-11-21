@@ -1,7 +1,9 @@
 import { buildApp } from "./app.js";
 import { env } from "./env.js";
+import { assertProviderAllowed } from "./modules/assistant/guard.js";
 
 async function main() {
+  assertProviderAllowed(env);
   const app = await buildApp();
 
   const shutdown = async (signal: string) => {

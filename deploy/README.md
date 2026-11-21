@@ -16,7 +16,7 @@ SSH через Kerio VPN; пароли и ключи в репозиторий �
 Маршруты nginx: `/api/room`, `/api/street` — приём данных от плат (адреса зашиты в прошивку, менять
 нельзя); `/api/room/latest`, `/api/room/all`, `/api/street/latest`, `/api/street/all` — старые
 адреса для фронтенда, перенаправляются на `/v1/sensors/*`; `/api/v1/ws/sensors` — WebSocket;
-остальное `/api/v1/*` — в `/v1/*`; всё прочее — `index.html` (SPA).
+`/api/v1/assistant/*` — чат помощника, поток без буферизации; остальное `/api/v1/*` — в `/v1/*`; всё прочее — `index.html` (SPA).
 
 Исходники на сервере — это `git archive` нужного коммита (папки `.git` там нет). Проверка, что код
 на сервере совпадает с коммитом: контрольные суммы файлов `apps/` и `packages/` на сервере и в
@@ -47,6 +47,18 @@ SSH через Kerio VPN; пароли и ключи в репозиторий �
 Откат: `rsync -a --delete /var/www/weather-frontend-new.bak-<дата>/ /var/www/weather-frontend-new/`.
 Открытая вкладка со старой версией при следующей подгрузке части страницы может получить 404 до
 обновления страницы — это ожидаемо.
+
+## Помощник (чат)
+
+Настройки только в `.env` на сервере: `ASSISTANT_ENABLED` (по умолчанию `false`), `ASSISTANT_PROVIDER`
+(`gemini`; `fake` в продакшене запрещён, сервер не стартует), `GEMINI_API_KEY`, `ASSISTANT_MODEL`,
+лимиты `ASSISTANT_RATE_PER_MIN`, `ASSISTANT_RATE_PER_HOUR`, `ASSISTANT_RATE_GLOBAL_PER_MIN`,
+`ASSISTANT_MAX_OUTPUT_TOKENS`. Порядок: сначала выкатить API и nginx с выключенным флагом, проверить
+поток, затем включить. Откат: `ASSISTANT_ENABLED=false` и перезапуск контейнера.
+
+Проверка потока (куски должны приходить по мере генерации, а не одним блоком в конце):
+`curl -N -X POST https://weather.nuu.uz/api/v1/assistant/chat -H 'content-type: application/json' -d '{"message":"Привет","lang":"ru","context":"room"}'`.
+`GET /api/v1/assistant/status` отвечает `{"enabled":true|false}`.
 
 ## Изменение nginx
 

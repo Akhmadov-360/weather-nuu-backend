@@ -1,0 +1,20 @@
+{
+  "request": {
+    "message": "Какая сейчас температура в аудитории?",
+    "history": [
+      { "role": "user", "content": "Привет" },
+      { "role": "assistant", "content": "Здравствуйте! Чем помочь?" }
+    ],
+    "lang": "ru",
+    "context": "room"
+  },
+  "events": [
+    { "type": "tool_start", "id": "t1", "name": "get_current" },
+    { "type": "tool_end", "id": "t1", "name": "get_current", "ok": true },
+    { "type": "text", "delta": "Сейчас 24,7 °C." },
+    { "type": "citations", "items": [{ "id": "who-2021-pm25", "title": "WHO 2021", "source": "https://www.who.int" }] },
+    { "type": "done", "inputTokens": 420, "outputTokens": 18 },
+    { "type": "error", "code": "rate_limited" }
+  ],
+  "status": { "enabled": true }
+}
