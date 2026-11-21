@@ -19,6 +19,7 @@
     "@fastify/compress": "^8.0.1",
     "@fastify/cors": "^10.0.1",
     "@fastify/websocket": "^11.0.1",
+    "@weather/air-quality": "workspace:*",
     "@weather/contracts": "workspace:*",
     "@weather/timeseries": "workspace:*",
     "archiver": "^8.0.0",

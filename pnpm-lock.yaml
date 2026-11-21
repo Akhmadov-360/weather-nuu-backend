@@ -29,6 +29,9 @@ importers:
       '@fastify/websocket':
         specifier: ^11.0.1
         version: 11.3.0
+      '@weather/air-quality':
+        specifier: workspace:*
+        version: link:../../packages/air-quality
       '@weather/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
