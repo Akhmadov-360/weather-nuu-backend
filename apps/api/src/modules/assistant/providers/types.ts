@@ -5,7 +5,8 @@ export type ToolSpec = {
   parameters: Record<string, unknown>;
 };
 
-export type ToolCall = { id: string; name: string; args: unknown };
+/** `signature` is opaque data of the provider (Gemini's thought signature): it is given back with the call. */
+export type ToolCall = { id: string; name: string; args: unknown; signature?: string };
 
 /** One message of the conversation as a model provider sees it. */
 export type ProviderMessage = {

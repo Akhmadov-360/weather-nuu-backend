@@ -43,6 +43,11 @@ describe("buildSystemPrompt", () => {
     expect(prompt({ lang: "uz" })).toMatch(/Uzbek/);
   });
 
+  it("asks for plain words for the AQI category, not the code names of the tools", () => {
+    expect(prompt()).toMatch(/plain words/i);
+    expect(prompt()).toMatch(/unhealthy_sensitive/);
+  });
+
   it("declines questions that are not about the air and the station", () => {
     expect(prompt()).toMatch(/off-topic|not about/i);
   });
