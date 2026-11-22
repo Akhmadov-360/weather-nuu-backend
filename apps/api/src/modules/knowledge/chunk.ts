@@ -44,6 +44,11 @@ export function hashChunk(title: string, text: string): string {
 
 type Section = { path: string[]; paragraphs: string[] };
 
+/** The title of a document and its first heading are usually the same words: say them once. */
+function dedupe(path: string[]): string[] {
+  return path.filter((part, i) => i === 0 || part !== path[i - 1]);
+}
+
 function sections(body: string, rootTitle: string): Section[] {
   const out: Section[] = [];
   const path: string[] = [];
@@ -65,7 +70,7 @@ function sections(body: string, rootTitle: string): Section[] {
       const level = heading[1]!.length;
       path.length = level - 1;
       path[level - 1] = heading[2]!;
-      current = { path: [rootTitle, ...path.filter(Boolean)], paragraphs: [] };
+      current = { path: dedupe([rootTitle, ...path.filter(Boolean)]), paragraphs: [] };
     } else if (!line.trim()) {
       flushParagraph();
     } else {
