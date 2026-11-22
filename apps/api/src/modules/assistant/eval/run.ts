@@ -15,7 +15,7 @@ export async function runCase(provider: ChatProvider, c: EvalCase, registry: Too
       provider,
       registry,
       system: buildSystemPrompt({ lang: c.lang, context: c.context, now: EVAL_NOW }),
-      history: [],
+      history: (c.history ?? []).map((m) => ({ role: m.role === "user" ? ("user" as const) : ("model" as const), text: m.content })),
       message: c.question,
       maxOutputTokens: 600,
       exhaustedMessage: exhaustedMessage(c.lang),

@@ -32,7 +32,7 @@ export type CaseScore = {
 export function scoreCase(c: EvalCase, run: CaseRun): CaseScore {
   const called = new Set(run.tools);
   const tools = c.expectTools.every((t) => called.has(t)) && !(c.forbidTools ?? []).some((t) => called.has(t));
-  const unverified = findUnverifiedNumbers(run.answer, run.toolResults, c.question);
+  const unverified = findUnverifiedNumbers(run.answer, run.toolResults, [c.question, ...(c.history ?? []).map((m) => m.content)].join(" "));
   const numbers = unverified.length === 0;
   const answered = !run.failed && run.answer.trim().length > 0;
   const behaviour = !(c.forbid ?? []).some((p) => new RegExp(p, "i").test(run.answer));

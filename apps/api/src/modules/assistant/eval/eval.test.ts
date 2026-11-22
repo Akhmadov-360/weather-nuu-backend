@@ -101,6 +101,21 @@ describe("runCase with a scripted model", () => {
     expect(scoreCase(base, r).pass).toBe(true);
   });
 
+  it("hands the earlier turns of a dialogue to the model, and does not count their figures as invented", async () => {
+    const c: EvalCase = {
+      ...base,
+      question: "А на улице?",
+      history: [
+        { role: "user", content: "Какая температура?" },
+        { role: "assistant", content: "Сейчас 24.7 °C." },
+      ],
+    };
+    const provider = new FakeChatProvider([[{ type: "text", delta: "Раньше было 24.7 °C." }]]);
+    const r = await runCase(provider, c);
+    expect(provider.calls[0]!.messages.map((m) => m.role)).toEqual(["user", "model", "user"]);
+    expect(scoreCase({ ...c, expectTools: [] }, r).numbers).toBe(true);
+  });
+
   it("marks a run failed when the model breaks", async () => {
     const r = await runCase(new FakeChatProvider([new Error("boom")]), base);
     expect(r.failed).toBe(true);

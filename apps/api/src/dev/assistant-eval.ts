@@ -6,7 +6,7 @@ import { GeminiChatProvider } from "../modules/assistant/providers/gemini.js";
 
 /**
  * The question set against the real model, with the real tools over fixed readings:
- *   pnpm --filter @weather/api eval:assistant [--out result.json] [--only ru|uz|en] [--pause 3000]
+ *   pnpm --filter @weather/api eval:assistant [--out result.json] [--only ru|uz|en] [--pause 8000]
  * Needs GEMINI_API_KEY and ASSISTANT_MODEL in apps/api/.env. Questions and answers go to the console and the
  * optional file only; the key is never printed.
  */
@@ -27,7 +27,7 @@ const cases = only ? EVAL_CASES.filter((c) => c.lang === only) : EVAL_CASES;
 const answers: Record<string, string> = {};
 const errors: Record<string, string> = {};
 const { scores, summary } = await runEval(new GeminiChatProvider({ apiKey, model }), cases, {
-  pauseMs: Number(flag("--pause") ?? 3000),
+  pauseMs: Number(flag("--pause") ?? 8000),
   onCase: (s, r) => {
     answers[s.id] = r.answer;
     if (r.error) errors[s.id] = r.error;
