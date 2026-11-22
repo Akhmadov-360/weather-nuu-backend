@@ -222,9 +222,32 @@ describe("failures", () => {
     expect(calls).toHaveLength(2);
   });
 
-  it("does not try again after a refusal from the server", async () => {
-    const { provider, calls } = providerWith(() => new Response("{}", { status: 500 }));
-    await collect(provider, input()).catch(() => undefined);
+  it.each([500, 502, 503, 504])("tries once more after a %i (the model is busy), and succeeds if the second try does", async (status) => {
+    const { provider, calls } = providerWith((_call, n) => (n === 1 ? new Response("{}", { status }) : sse([frame({ candidates: [{ content: { parts: [{ text: "ok" }] } }] })])));
+    expect(await collect(provider, input())).toEqual([{ type: "text", delta: "ok" }]);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("gives up after two busy answers and says which status it saw", async () => {
+    const { provider, calls } = providerWith(() => new Response("{}", { status: 503 }));
+    const error = (await collect(provider, input()).catch((e: unknown) => e)) as ProviderError;
+    expect(error.kind).toBe("upstream");
+    expect(error.status).toBe(503);
+    expect(calls).toHaveLength(2);
+  });
+
+  it.each([400, 403, 404])("does not try again after a %i: the request itself is wrong", async (status) => {
+    const { provider, calls } = providerWith(() => new Response("{}", { status }));
+    const error = (await collect(provider, input()).catch((e: unknown) => e)) as ProviderError;
+    expect(error.status).toBe(status);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("does not try again after a 429: waiting would only use up more of the quota", async () => {
+    const { provider, calls } = providerWith(() => new Response("{}", { status: 429 }));
+    const error = (await collect(provider, input()).catch((e: unknown) => e)) as ProviderError;
+    expect(error.kind).toBe("quota");
+    expect(error.status).toBe(429);
     expect(calls).toHaveLength(1);
   });
 

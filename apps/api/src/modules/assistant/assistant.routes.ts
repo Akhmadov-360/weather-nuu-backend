@@ -2,8 +2,9 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { AssistantStatusSchema, ChatRequestSchema, type AssistantEvent } from "@weather/contracts";
 import { runAgent } from "./agent-loop.js";
+import { findUnverifiedNumbers } from "./verify-numbers.js";
 import { buildSystemPrompt, exhaustedMessage, PROMPT_VERSION } from "./prompt.js";
-import type { ChatProvider, ProviderMessage } from "./providers/types.js";
+import { ProviderError, type ChatProvider, type ProviderMessage } from "./providers/types.js";
 import type { RateLimiter } from "./rate-limiter.js";
 import type { ToolRegistry } from "./tools/registry.js";
 
@@ -83,6 +84,9 @@ export function createAssistantRoutes(deps: AssistantDeps): FastifyPluginAsyncZo
       let inputTokens = 0;
       let outputTokens = 0;
       let outcome: "done" | "error" | "cancelled" = "cancelled";
+      let answer = "";
+      const toolResults: string[] = [];
+      let providerError: { kind: string; status?: number } | undefined;
 
       try {
         for await (const event of runAgent({
@@ -95,9 +99,16 @@ export function createAssistantRoutes(deps: AssistantDeps): FastifyPluginAsyncZo
           exhaustedMessage: exhaustedMessage(lang),
           signal: controller.signal,
           ctx: { now },
+          onToolResult: (_name, result) => {
+            if (result.ok) toolResults.push(result.content);
+          },
+          onProviderError: (error) => {
+            providerError = error instanceof ProviderError ? { kind: error.kind, ...(error.status ? { status: error.status } : {}) } : { kind: "unknown" };
+          },
         })) {
           if (raw.destroyed || raw.writableEnded) break;
           if (event.type === "tool_start") tools.push(event.name);
+          if (event.type === "text") answer += event.delta;
           if (event.type === "done") {
             outcome = "done";
             inputTokens = event.inputTokens;
@@ -115,7 +126,21 @@ export function createAssistantRoutes(deps: AssistantDeps): FastifyPluginAsyncZo
         if (!raw.writableEnded) raw.end();
         // The question itself is not logged: it may contain what the visitor should not have written.
         request.log.info(
-          { assistant: { lang, context, tools, latencyMs: Date.now() - started, inputTokens, outputTokens, promptVersion: PROMPT_VERSION, outcome } },
+          {
+            assistant: {
+              lang,
+              context,
+              tools,
+              latencyMs: Date.now() - started,
+              inputTokens,
+              outputTokens,
+              promptVersion: PROMPT_VERSION,
+              outcome,
+              ...(providerError ? { providerError } : {}),
+              // Figures in the answer that no tool returned (a signal for the evaluation; the visitor is not told).
+              ...(outcome === "done" ? { unverifiedNumbers: findUnverifiedNumbers(answer, toolResults, [message, ...history.map((m) => m.content)].join(" ")) } : {}),
+            },
+          },
           "assistant request",
         );
       }

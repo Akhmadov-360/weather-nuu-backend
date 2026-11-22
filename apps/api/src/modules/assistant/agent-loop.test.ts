@@ -181,4 +181,31 @@ describe("runAgent", () => {
     const events = await collect(input);
     expect(events.map((e) => e.type)).toEqual(["text", "tool_start", "tool_end", "error"]);
   });
+
+  it("reports what each tool returned, for the log", async () => {
+    const seen: { name: string; ok: boolean; content: string }[] = [];
+    const { input } = setup([callTurn({ id: "c1", name: "get_current", args: { source: "room" } }), answerTurn("ok")], {
+      onToolResult: (name, result) => seen.push({ name, ...result }),
+    });
+    await collect(input);
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatchObject({ name: "get_current", ok: true });
+    expect(JSON.parse(seen[0]!.content)).toEqual({ source: "room", temperatureC: 24.7 });
+  });
+
+  it("reports the real reason when the model fails", async () => {
+    const reasons: unknown[] = [];
+    const failure = new ProviderError("upstream", "The model answered with HTTP 503", 503);
+    const { input } = setup([failure], { onProviderError: (e) => reasons.push(e) });
+    await collect(input);
+    expect(reasons).toEqual([failure]);
+  });
+
+  it("does not report a cancellation as a failure", async () => {
+    const reasons: unknown[] = [];
+    const controller = new AbortController();
+    const { input } = setup([[{ type: "text", delta: "a" }, { type: "text", delta: "b" }]], { signal: controller.signal, onProviderError: (e) => reasons.push(e) });
+    for await (const _event of runAgent(input)) controller.abort();
+    expect(reasons).toEqual([]);
+  });
 });
