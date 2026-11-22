@@ -30,6 +30,8 @@ const EnvSchema = z.object({
   ASSISTANT_RATE_PER_HOUR: z.coerce.number().int().positive().default(60),
   // One ceiling for the whole service, under the free-tier quota of the model.
   ASSISTANT_RATE_GLOBAL_PER_MIN: z.coerce.number().int().positive().default(20),
+  /** Where the knowledge index file is; by default apps/api/knowledge/index.json. */
+  KNOWLEDGE_INDEX_PATH: z.string().min(1).optional(),
   ASSISTANT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(600),
 });
 

@@ -1,6 +1,6 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { AssistantStatusSchema, ChatRequestSchema, type AssistantEvent } from "@weather/contracts";
+import { AssistantStatusSchema, ChatRequestSchema, type AssistantCitation, type AssistantEvent } from "@weather/contracts";
 import { runAgent } from "./agent-loop.js";
 import { findUnverifiedNumbers } from "./verify-numbers.js";
 import { buildSystemPrompt, exhaustedMessage, PROMPT_VERSION } from "./prompt.js";
@@ -87,18 +87,26 @@ export function createAssistantRoutes(deps: AssistantDeps): FastifyPluginAsyncZo
       let answer = "";
       const toolResults: string[] = [];
       let providerError: { kind: string; status?: number } | undefined;
+      // The sources the tools used, shown with the answer; the same fragment found twice is shown once.
+      const citations = new Map<string, AssistantCitation>();
+      const knowledge = deps.registry.specs().some((spec) => spec.name === "search_knowledge");
 
       try {
         for await (const event of runAgent({
           provider,
           registry: deps.registry,
-          system: buildSystemPrompt({ lang, context, now }),
+          system: buildSystemPrompt({ lang, context, now, knowledge }),
           history: dialogue,
           message,
           maxOutputTokens: deps.maxOutputTokens,
           exhaustedMessage: exhaustedMessage(lang),
           signal: controller.signal,
-          ctx: { now },
+          ctx: {
+            now,
+            onCitations: (items) => {
+              for (const item of items) citations.set(item.id, item);
+            },
+          },
           onToolResult: (_name, result) => {
             if (result.ok) toolResults.push(result.content);
           },
@@ -110,6 +118,7 @@ export function createAssistantRoutes(deps: AssistantDeps): FastifyPluginAsyncZo
           if (event.type === "tool_start") tools.push(event.name);
           if (event.type === "text") answer += event.delta;
           if (event.type === "done") {
+            if (citations.size) raw.write(sse({ type: "citations", items: [...citations.values()] }));
             outcome = "done";
             inputTokens = event.inputTokens;
             outputTokens = event.outputTokens;
@@ -131,6 +140,7 @@ export function createAssistantRoutes(deps: AssistantDeps): FastifyPluginAsyncZo
               lang,
               context,
               tools,
+              ...(citations.size ? { sources: [...citations.keys()] } : {}),
               latencyMs: Date.now() - started,
               inputTokens,
               outputTokens,

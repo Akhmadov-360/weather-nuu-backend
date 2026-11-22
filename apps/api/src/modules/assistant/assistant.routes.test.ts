@@ -9,6 +9,7 @@ import { createAssistantRoutes, type AssistantDeps } from "./assistant.routes.js
 import { createRateLimiter } from "./rate-limiter.js";
 import { FakeChatProvider, type FakeTurn } from "./providers/fake.js";
 import { ProviderError, type ChatProvider, type GenerateInput, type ProviderChunk } from "./providers/types.js";
+import { createKnowledgeTool } from "./tools/knowledge-tool.js";
 import { defineTool, ToolRegistry } from "./tools/registry.js";
 
 const NOW = new Date("2026-11-21T10:00:00Z");
@@ -273,5 +274,43 @@ describe("the request log", () => {
     const { raw } = await loggedRequest(new FakeChatProvider([[{ type: "text", delta: "Ответ про 24,7 °C" }]]));
     expect(raw).not.toContain("Секретный вопрос 777");
     expect(raw).not.toContain("Ответ про");
+  });
+});
+
+describe("sources of an answer", () => {
+  const hit = (id: string) => ({
+    chunk: { id, source: "WHO 2021", url: "https://who.int/x", kind: "standard", lang: "en" as const, title: `Title ${id}`, text: "PM2.5 24-hour guideline is 15", contentHash: id, model: "m", dim: 1, embedding: new Float32Array([1]) },
+    score: 1,
+  });
+  const knowledgeTool = createKnowledgeTool(async () => [hit("who#1"), hit("who#2")]);
+  const script: FakeTurn[] = [
+    [{ type: "tool_calls", calls: [{ id: "k1", name: "search_knowledge", args: { query: "WHO PM2.5 guideline" } }] }],
+    [{ type: "text", delta: "According to WHO 2021 the guideline is 15" }, { type: "usage", inputTokens: 5, outputTokens: 5 }],
+  ];
+
+  it("sends the fragments the answer used as a citations event just before done", async () => {
+    const { app } = await build({ provider: new FakeChatProvider(script), registry: new ToolRegistry([getCurrent, knowledgeTool]) });
+    const sent = events((await chat(app)).payload);
+    const types = sent.map((e) => e.type);
+    expect(types.at(-2)).toBe("citations");
+    expect(types.at(-1)).toBe("done");
+    const citations = sent.find((e) => e.type === "citations");
+    expect(citations).toMatchObject({ items: [{ id: "who#1", source: "WHO 2021", url: "https://who.int/x" }, { id: "who#2" }] });
+  });
+
+  it("sends no citations when no source was used", async () => {
+    const { app } = await build({ provider: new FakeChatProvider(toolThenAnswer) });
+    expect(events((await chat(app)).payload).some((e) => e.type === "citations")).toBe(false);
+  });
+
+  it("tells the model about the knowledge base only when the tool is there", async () => {
+    const withTool = new FakeChatProvider(script);
+    const { app } = await build({ provider: withTool, registry: new ToolRegistry([getCurrent, knowledgeTool]) });
+    await chat(app);
+    expect(withTool.calls[0]!.system).toContain("search_knowledge");
+    const without = new FakeChatProvider(toolThenAnswer);
+    const second = await build({ provider: without });
+    await chat(second.app);
+    expect(without.calls[0]!.system).not.toContain("search_knowledge");
   });
 });

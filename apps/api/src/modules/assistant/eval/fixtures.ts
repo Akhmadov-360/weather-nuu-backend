@@ -1,4 +1,6 @@
 import type { AggregateBucketRow, SensorReading } from "@weather/contracts";
+import type { KnowledgeSearch } from "../../knowledge/service.js";
+import { createKnowledgeTool } from "../tools/knowledge-tool.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { createSensorTools } from "../tools/sensor-tools.js";
 
@@ -31,11 +33,11 @@ const bucket = (source: "room" | "street", at: Date): AggregateBucketRow => ({
   pm10: source === "room" ? stats(52.8, 30.1, 95.2) : stats(null),
 });
 
-export function evalRegistry(): ToolRegistry {
-  return new ToolRegistry(
-    createSensorTools({
-      latest: async (source) => reading(source),
-      aggregate: async ({ source, from }) => [bucket(source, from)],
-    }),
-  );
+export function evalRegistry(knowledge?: KnowledgeSearch): ToolRegistry {
+  const tools = createSensorTools({
+    latest: async (source) => reading(source),
+    aggregate: async ({ source, from }) => [bucket(source, from)],
+  });
+  if (knowledge) tools.push(createKnowledgeTool(knowledge));
+  return new ToolRegistry(tools);
 }

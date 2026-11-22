@@ -2,7 +2,13 @@ import "dotenv/config";
 import { writeFileSync } from "node:fs";
 import { EVAL_CASES } from "../modules/assistant/eval/cases.js";
 import { runEval } from "../modules/assistant/eval/run.js";
+import { evalRegistry } from "../modules/assistant/eval/fixtures.js";
 import { GeminiChatProvider } from "../modules/assistant/providers/gemini.js";
+import { GeminiEmbeddingProvider } from "../modules/knowledge/embedding.js";
+import { KnowledgeIndex } from "../modules/knowledge/index-search.js";
+import { KnowledgeService } from "../modules/knowledge/service.js";
+import { FileKnowledgeStore } from "../modules/knowledge/store.js";
+import { join } from "node:path";
 
 /**
  * The question set against the real model, with the real tools over fixed readings:
@@ -21,6 +27,9 @@ if (!apiKey || !model) {
   console.error("Set GEMINI_API_KEY and ASSISTANT_MODEL in apps/api/.env");
   process.exit(1);
 }
+// The knowledge base is part of the answer: the real index, the real embeddings of the questions.
+const index = new KnowledgeIndex(await new FileKnowledgeStore(join(process.cwd(), "knowledge", "index.json")).load());
+const knowledge = index.size && index.model && index.dim ? new KnowledgeService(index, new GeminiEmbeddingProvider({ apiKey, model: index.model, dim: index.dim })) : null;
 const only = flag("--only");
 const cases = only ? EVAL_CASES.filter((c) => c.lang === only) : EVAL_CASES;
 
@@ -28,6 +37,7 @@ const answers: Record<string, string> = {};
 const errors: Record<string, string> = {};
 const { scores, summary } = await runEval(new GeminiChatProvider({ apiKey, model }), cases, {
   pauseMs: Number(flag("--pause") ?? 8000),
+  registry: evalRegistry(knowledge?.search),
   onCase: (s, r) => {
     answers[s.id] = r.answer;
     if (r.error) errors[s.id] = r.error;
