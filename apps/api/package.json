@@ -16,7 +16,8 @@
     "test:integration": "vitest run -c vitest.integration.config.ts",
     "assistant:smoke": "tsx src/dev/assistant-smoke.ts",
     "events:eval": "tsx src/dev/events-eval.ts",
-    "eval:assistant": "tsx src/dev/assistant-eval.ts"
+    "eval:assistant": "tsx src/dev/assistant-eval.ts",
+    "kb:bench": "tsx src/dev/kb-bench.ts"
   },
   "dependencies": {
     "@fastify/compress": "^8.0.1",
