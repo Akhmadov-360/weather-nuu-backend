@@ -14,7 +14,8 @@
     "db:seed": "tsx src/db/seed.ts",
     "sim": "tsx src/dev/simulator.ts",
     "test:integration": "vitest run -c vitest.integration.config.ts",
-    "assistant:smoke": "tsx src/dev/assistant-smoke.ts"
+    "assistant:smoke": "tsx src/dev/assistant-smoke.ts",
+    "events:eval": "tsx src/dev/events-eval.ts"
   },
   "dependencies": {
     "@fastify/compress": "^8.0.1",

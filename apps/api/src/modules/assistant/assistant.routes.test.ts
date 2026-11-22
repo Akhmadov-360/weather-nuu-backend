@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod";
+import { Writable } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { AssistantEventSchema, MESSAGE_MAX_CHARS, type AssistantEvent } from "@weather/contracts";
@@ -7,7 +8,7 @@ import { errorHandlerPlugin } from "../../plugins/error-handler.js";
 import { createAssistantRoutes, type AssistantDeps } from "./assistant.routes.js";
 import { createRateLimiter } from "./rate-limiter.js";
 import { FakeChatProvider, type FakeTurn } from "./providers/fake.js";
-import type { ChatProvider, GenerateInput, ProviderChunk } from "./providers/types.js";
+import { ProviderError, type ChatProvider, type GenerateInput, type ProviderChunk } from "./providers/types.js";
 import { defineTool, ToolRegistry } from "./tools/registry.js";
 
 const NOW = new Date("2026-11-21T10:00:00Z");
@@ -206,5 +207,71 @@ describe("GET /v1/assistant/status", () => {
     expect((await off.app.inject({ method: "GET", url: "/v1/assistant/status" })).json()).toEqual({ enabled: false });
     const noProvider = await build({ provider: null });
     expect((await noProvider.app.inject({ method: "GET", url: "/v1/assistant/status" })).json()).toEqual({ enabled: false });
+  });
+});
+
+describe("the request log", () => {
+  async function loggedRequest(provider: ChatProvider, message = "Какая температура? Секретный вопрос 777") {
+    const lines: string[] = [];
+    const stream = new Writable({
+      write(chunk, _enc, done) {
+        lines.push(String(chunk));
+        done();
+      },
+    });
+    const app = Fastify({ logger: { level: "info", stream } });
+    app.setValidatorCompiler(validatorCompiler);
+    app.setSerializerCompiler(serializerCompiler);
+    await app.register(errorHandlerPlugin);
+    await app.register(
+      createAssistantRoutes({
+        enabled: true,
+        provider,
+        registry: new ToolRegistry([getCurrent]),
+        limiter: createRateLimiter({ perMinute: 10, perHour: 60, globalPerMinute: 20 }),
+        maxOutputTokens: 600,
+        now: () => NOW,
+        pingMs: 15_000,
+      }),
+    );
+    apps.push(app);
+    await app.inject({ method: "POST", url: "/v1/assistant/chat", payload: { ...request, message } });
+    const entries = lines.flatMap((l) => l.split(/\r?\n/)).filter(Boolean).map((l) => JSON.parse(l) as Record<string, any>); // eslint-disable-line @typescript-eslint/no-explicit-any
+    return { entries, raw: lines.join("") };
+  }
+
+  it("says why the model failed: the kind and the HTTP status, not shown to the visitor", async () => {
+    const { entries } = await loggedRequest(new FakeChatProvider([new ProviderError("upstream", "The model answered with HTTP 503", 503)]));
+    const log = entries.find((e) => e.msg === "assistant request")!;
+    expect(log.assistant.outcome).toBe("error");
+    expect(log.assistant.providerError).toEqual({ kind: "upstream", status: 503 });
+  });
+
+  it("lists the figures of an answer that no tool returned", async () => {
+    const { entries } = await loggedRequest(
+      new FakeChatProvider([
+        [{ type: "tool_calls", calls: [{ id: "c1", name: "get_current", args: { source: "room" } }] }],
+        [{ type: "text", delta: "Сейчас 24,7 °C, на 15,4 °C теплее улицы." }],
+      ]),
+    );
+    const log = entries.find((e) => e.msg === "assistant request")!;
+    expect(log.assistant.outcome).toBe("done");
+    expect(log.assistant.unverifiedNumbers).toEqual(["15.4"]);
+  });
+
+  it("has an empty list when every figure came from a tool", async () => {
+    const { entries } = await loggedRequest(
+      new FakeChatProvider([
+        [{ type: "tool_calls", calls: [{ id: "c1", name: "get_current", args: { source: "room" } }] }],
+        [{ type: "text", delta: "Сейчас 24,7 °C." }],
+      ]),
+    );
+    expect(entries.find((e) => e.msg === "assistant request")!.assistant.unverifiedNumbers).toEqual([]);
+  });
+
+  it("never writes the question or the answer into the log", async () => {
+    const { raw } = await loggedRequest(new FakeChatProvider([[{ type: "text", delta: "Ответ про 24,7 °C" }]]));
+    expect(raw).not.toContain("Секретный вопрос 777");
+    expect(raw).not.toContain("Ответ про");
   });
 });

@@ -65,6 +65,9 @@ function toDeclarations(tools: ToolSpec[]) {
   return [{ functionDeclarations: tools.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: t.parameters })) }];
 }
 
+/** A busy or failing model (not a refusal of our request): worth one more try. */
+const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
+
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -98,7 +101,7 @@ export class GeminiChatProvider implements ChatProvider {
     const url = `${this.baseUrl}/v1beta/models/${encodeURIComponent(this.options.model)}:streamGenerateContent?alt=sse`;
 
     let response: Response | undefined;
-    for (let attempt = 0; attempt < 2 && !response; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
         response = await this.doFetch(url, {
           method: "POST",
@@ -111,12 +114,21 @@ export class GeminiChatProvider implements ChatProvider {
         if (timeout.aborted) throw new ProviderError("upstream", "The model did not answer in time");
         if (attempt === 1) throw new ProviderError("upstream", "Could not reach the model");
         await sleep(this.retryDelayMs);
+        continue;
       }
+      // Busy (503 and the like): wait a moment and ask once more. A 429 is not retried: it means the quota is gone.
+      if (RETRYABLE_STATUSES.has(response.status) && attempt === 0) {
+        void response.body?.cancel().catch(() => undefined);
+        response = undefined;
+        await sleep(this.retryDelayMs);
+        continue;
+      }
+      break;
     }
     if (!response) throw new ProviderError("upstream", "Could not reach the model");
 
-    if (response.status === 429) throw new ProviderError("quota", "The model quota is used up");
-    if (!response.ok) throw new ProviderError("upstream", `The model answered with HTTP ${response.status}`);
+    if (response.status === 429) throw new ProviderError("quota", "The model quota is used up", 429);
+    if (!response.ok) throw new ProviderError("upstream", `The model answered with HTTP ${response.status}`, response.status);
     if (!response.body) throw new ProviderError("upstream", "The model sent no answer");
 
     const reader = response.body.getReader();

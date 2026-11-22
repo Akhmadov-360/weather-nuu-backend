@@ -18,6 +18,10 @@ export type AgentInput = {
   maxIterations?: number;
   signal: AbortSignal;
   ctx: ToolContext;
+  /** Called with what each tool returned, for the request log and the number check. Never changes the answer. */
+  onToolResult?: (name: string, result: { ok: boolean; content: string }) => void;
+  /** Called with the real reason a model call failed (the visitor only sees a code). */
+  onProviderError?: (error: unknown) => void;
 };
 
 /**
@@ -54,6 +58,7 @@ export async function* runAgent(input: AgentInput): AsyncGenerator<AssistantEven
       }
     } catch (error) {
       if (input.signal.aborted) return;
+      input.onProviderError?.(error);
       yield { type: "error", code: error instanceof ProviderError && error.kind === "quota" ? "quota" : "upstream" };
       return;
     }
@@ -70,6 +75,7 @@ export async function* runAgent(input: AgentInput): AsyncGenerator<AssistantEven
     if (input.signal.aborted) return;
     for (const [i, call] of calls.entries()) {
       const result = results[i]!;
+      input.onToolResult?.(call.name, result);
       yield { type: "tool_end", id: call.id, name: call.name, ok: result.ok };
       messages.push({ role: "tool", toolResult: { id: call.id, name: call.name, content: result.content } });
     }

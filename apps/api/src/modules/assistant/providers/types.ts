@@ -37,6 +37,8 @@ export class ProviderError extends Error {
   constructor(
     readonly kind: "quota" | "upstream",
     message: string,
+    /** The HTTP status of the model's answer, when there was one: for the log, never shown to the visitor. */
+    readonly status?: number,
   ) {
     super(message);
     this.name = "ProviderError";
