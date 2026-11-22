@@ -53,7 +53,7 @@ SSH через Kerio VPN; пароли и ключи в репозиторий �
 Настройки только в `.env` на сервере: `ASSISTANT_ENABLED` (по умолчанию `false`), `ASSISTANT_PROVIDER`
 (`gemini`; `fake` в продакшене запрещён, сервер не стартует), `GEMINI_API_KEY`, `ASSISTANT_MODEL`,
 лимиты `ASSISTANT_RATE_PER_MIN`, `ASSISTANT_RATE_PER_HOUR`, `ASSISTANT_RATE_GLOBAL_PER_MIN`,
-`ASSISTANT_MAX_OUTPUT_TOKENS`. Порядок: сначала выкатить API и nginx с выключенным флагом, проверить
+`ASSISTANT_MAX_OUTPUT_TOKENS`. Бесплатный ключ `gemini-3.5-flash-lite` даёт 15 запросов в минуту и 500 в день, вопрос стоит от двух запросов: для показа ставить `ASSISTANT_RATE_PER_MIN=4`, `ASSISTANT_RATE_PER_HOUR=40`, `ASSISTANT_RATE_GLOBAL_PER_MIN=6`. На стенде все гости за одним адресом, их общий предел — меньшее из «на адрес» и «общий». Порядок: сначала выкатить API и nginx с выключенным флагом, проверить
 поток, затем включить. Откат: `ASSISTANT_ENABLED=false` и перезапуск контейнера.
 
 Проверка потока (куски должны приходить по мере генерации, а не одним блоком в конце):
