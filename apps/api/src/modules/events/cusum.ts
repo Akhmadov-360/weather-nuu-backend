@@ -4,7 +4,7 @@ export type ChangePoint = {
   /** Index where the sum crossed the threshold and the change was reported. */
   detected: number;
   direction: 1 | -1;
-  /** Value at `detected` minus the baseline before the change. */
+  /** Mean distance of the ten samples after `detected` from the trend that held before the change. */
   magnitude: number;
 };
 
@@ -43,10 +43,35 @@ export function estimateSigma(values: number[]): number {
 }
 
 /**
+ * Where the series should be at index `at` if it keeps doing what it did over [from, to): a straight line
+ * through that stretch, extended. A slow drift (the street warming through the day) is followed, so only a
+ * quicker change leaves a residual.
+ */
+function trendBaseline(values: number[], from: number, to: number, at: number): number {
+  const n = to - from;
+  let sx = 0;
+  let sy = 0;
+  let sxx = 0;
+  let sxy = 0;
+  for (let i = from; i < to; i++) {
+    const x = i - from;
+    const y = values[i]!;
+    sx += x;
+    sy += y;
+    sxx += x * x;
+    sxy += x * y;
+  }
+  const den = n * sxx - sx * sx;
+  const slope = den === 0 ? 0 : (n * sxy - sx * sy) / den;
+  const intercept = (sy - slope * sx) / n;
+  return intercept + slope * (at - from);
+}
+
+/**
  * Cumulative-sum change detection (formula (1) of the assistant document), two-sided:
  *   S⁺ₜ = max(0, S⁺ₜ₋₁ + (xₜ − μₜ − k·σ)),   S⁻ₜ = max(0, S⁻ₜ₋₁ + (μₜ − xₜ − k·σ)),
- * a signal when a sum passes h·σ. μₜ is the median of a trailing stretch that ends `baselineLag` samples ago,
- * so a slow drift is followed and a quicker change stands out.
+ * a signal when a sum passes h·σ. μₜ is a line fitted to a trailing stretch that ends `baselineLag` samples ago
+ * and extended to now, so a slow drift is followed and a quicker change stands out.
  */
 export function cusum(values: number[], options: CusumOptions): ChangePoint[] {
   const { sigma } = options;
@@ -65,7 +90,7 @@ export function cusum(values: number[], options: CusumOptions): ChangePoint[] {
   let quietUntil = 0;
 
   for (let t = window + lag; t < values.length; t++) {
-    const baseline = median(values.slice(t - lag - window, t - lag));
+    const baseline = trendBaseline(values, t - lag - window, t - lag, t);
     const r = values[t]! - baseline;
     if (t < quietUntil) {
       up = 0;
@@ -84,7 +109,11 @@ export function cusum(values: number[], options: CusumOptions): ChangePoint[] {
     if (up > h * sigma || down > h * sigma) {
       const direction = up > down ? 1 : -1;
       const start = direction === 1 ? upSince : downSince;
-      found.push({ start, detected: t, direction, magnitude: values[t]! - median(values.slice(Math.max(0, start - lag - window), Math.max(1, start - lag))) });
+      // Size of the change: the next few samples against where the trend before the change would have been.
+      const ahead = Math.min(values.length, t + 10);
+      let sum = 0;
+      for (let i = t; i < ahead; i++) sum += values[i]! - trendBaseline(values, start - lag - window, start - lag, i);
+      found.push({ start, detected: t, direction, magnitude: sum / Math.max(1, ahead - t) });
       up = 0;
       down = 0;
       quietUntil = t + cooldown;
