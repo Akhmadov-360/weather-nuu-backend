@@ -1,8 +1,12 @@
 import { z } from "zod";
-import { AppError } from "@weather/contracts";
+import { AppError, type AssistantCitation } from "@weather/contracts";
 import type { ToolSpec } from "../providers/types.js";
 
-export type ToolContext = { now: Date };
+export type ToolContext = {
+  now: Date;
+  /** A tool that used sources tells which, so that the answer can show them (the `citations` event). */
+  onCitations?: (items: AssistantCitation[]) => void;
+};
 
 /** What a tool hands back to the model: the text it will read, and whether the call worked. */
 export type ToolResult = { ok: boolean; content: string };

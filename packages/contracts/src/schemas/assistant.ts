@@ -51,6 +51,8 @@ export const AssistantCitationSchema = z.object({
   id: z.string(),
   title: z.string(),
   source: z.string(),
+  /** Where the source can be read, when it has an address. */
+  url: z.string().optional(),
 });
 export type AssistantCitation = z.infer<typeof AssistantCitationSchema>;
 

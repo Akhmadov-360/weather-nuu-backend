@@ -14,7 +14,7 @@ export async function runCase(provider: ChatProvider, c: EvalCase, registry: Too
     for await (const event of runAgent({
       provider,
       registry,
-      system: buildSystemPrompt({ lang: c.lang, context: c.context, now: EVAL_NOW }),
+      system: buildSystemPrompt({ lang: c.lang, context: c.context, now: EVAL_NOW, knowledge: registry.specs().some((t) => t.name === "search_knowledge") }),
       history: (c.history ?? []).map((m) => ({ role: m.role === "user" ? ("user" as const) : ("model" as const), text: m.content })),
       message: c.question,
       maxOutputTokens: 600,
@@ -47,11 +47,11 @@ export async function runCase(provider: ChatProvider, c: EvalCase, registry: Too
 export async function runEval(
   provider: ChatProvider,
   cases: EvalCase[],
-  options: { pauseMs?: number; onCase?: (score: CaseScore, run: CaseRun) => void } = {},
+  options: { pauseMs?: number; registry?: ToolRegistry; onCase?: (score: CaseScore, run: CaseRun) => void } = {},
 ): Promise<{ scores: CaseScore[]; summary: Summary }> {
   const scores: CaseScore[] = [];
   for (const c of cases) {
-    const run = await runCase(provider, c);
+    const run = await runCase(provider, c, options.registry);
     const score = scoreCase(c, run);
     scores.push(score);
     options.onCase?.(score, run);

@@ -162,4 +162,11 @@ export const EVAL_CASES: EvalCase[] = [
     expectTools: [],
     forbidTools: ["get_current", "get_period_summary", "compare_room_street"],
   },
+  // Knowledge: norms, categories, sensors (these need the knowledge base)
+  limit("kn-who-ru", "ru", "Какая суточная норма PM2.5 по рекомендациям ВОЗ?", ["search_knowledge"], [], "room"),
+  limit("kn-epa-en", "en", "Which AQI range is called Unhealthy and what colour is it?", ["search_knowledge"], [], "room"),
+  limit("kn-mq5-ru", "ru", "Что измеряет датчик MQ-5 и насколько ему можно верить?", ["search_knowledge"], [], "room"),
+  limit("kn-co2-uz", "uz", "MQ-3 datchigi CO2 ni o‘lchaydimi?", ["search_knowledge"], [], "room"),
+  limit("kn-window-ru", "ru", "Поможет ли открытое окно снизить пыль в аудитории?", ["search_knowledge"], [], "room"),
+  limit("kn-unknown-ru", "ru", "Какая норма PM2.5 установлена в законодательстве Узбекистана?", [], ["(СанПиН|ПДК|законодательств\\w+ (установлен|составля)\\w*)[^.]{0,60}\\d"], "room"),
 ];
