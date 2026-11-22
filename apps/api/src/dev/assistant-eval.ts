@@ -25,12 +25,14 @@ const only = flag("--only");
 const cases = only ? EVAL_CASES.filter((c) => c.lang === only) : EVAL_CASES;
 
 const answers: Record<string, string> = {};
+const errors: Record<string, string> = {};
 const { scores, summary } = await runEval(new GeminiChatProvider({ apiKey, model }), cases, {
   pauseMs: Number(flag("--pause") ?? 3000),
   onCase: (s, r) => {
     answers[s.id] = r.answer;
+    if (r.error) errors[s.id] = r.error;
     console.log(
-      `${s.pass ? "PASS" : "FAIL"} ${s.id.padEnd(22)} ${String(s.latencyMs).padStart(6)} ms  tools:${s.tools ? "ok" : "NO"} numbers:${s.numbers ? "ok" : s.unverified.join(",")} behaviour:${s.behaviour ? "ok" : "NO"}`,
+      `${s.pass ? "PASS" : "FAIL"} ${s.id.padEnd(22)} ${String(s.latencyMs).padStart(6)} ms  tools:${s.tools ? "ok" : "NO"} numbers:${s.numbers ? "ok" : s.unverified.join(",")} behaviour:${s.behaviour ? "ok" : "NO"}${r.error ? `  [${r.error}]` : ""}`,
     );
   },
 });
@@ -43,4 +45,4 @@ console.log(
 console.log(`latency median ${summary.medianLatencyMs} ms, p95 ${summary.p95LatencyMs} ms`);
 if (summary.failed.length) console.log(`failed: ${summary.failed.join(", ")}`);
 const out = flag("--out");
-if (out) writeFileSync(out, JSON.stringify({ model, summary, scores, answers }, null, 2));
+if (out) writeFileSync(out, JSON.stringify({ model, summary, scores, answers, errors }, null, 2));

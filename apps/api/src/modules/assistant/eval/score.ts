@@ -9,6 +9,8 @@ export type CaseRun = {
   latencyMs: number;
   /** An error event or a thrown error ended the answer. */
   failed: boolean;
+  /** Why it failed: the error code of the stream and the kind and HTTP status of the model's failure. */
+  error?: string;
 };
 
 export type CaseScore = {

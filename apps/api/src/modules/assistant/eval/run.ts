@@ -21,16 +21,24 @@ export async function runCase(provider: ChatProvider, c: EvalCase, registry: Too
       exhaustedMessage: exhaustedMessage(c.lang),
       signal: new AbortController().signal,
       ctx: { now: EVAL_NOW },
+      onProviderError: (error) => {
+        const e = error as { kind?: string; status?: number; message?: string };
+        run.error = `${e.kind ?? "unknown"}${e.status ? ` ${e.status}` : ""}: ${String(e.message ?? "").slice(0, 160)}`;
+      },
       onToolResult: (_name, result) => {
         if (result.ok) run.toolResults.push(result.content);
       },
     })) {
       if (event.type === "tool_start") run.tools.push(event.name);
       else if (event.type === "text") run.answer += event.delta;
-      else if (event.type === "error") run.failed = true;
+      else if (event.type === "error") {
+        run.failed = true;
+        run.error ??= `stream error ${event.code}`;
+      }
     }
-  } catch {
+  } catch (error) {
     run.failed = true;
+    run.error ??= `thrown: ${error instanceof Error ? error.message : String(error)}`.slice(0, 160);
   }
   run.latencyMs = Date.now() - started;
   return run;
