@@ -145,6 +145,11 @@ describe("parseDocument and chunkDocument", () => {
     expect(chunks[1]!.text).toBe("Annual 5.");
   });
 
+  it("does not repeat the title of the document when the first heading says the same", () => {
+    const chunks = chunkDocument(["# WHO", "intro", "", "## PM2.5", "value"].join(String.fromCharCode(10)), "WHO");
+    expect(chunks.map((c) => c.title)).toEqual(["WHO", "WHO / PM2.5"]);
+  });
+
   it("cuts a long section at paragraph borders, with an overlap", () => {
     const paragraphs = Array.from({ length: 6 }, (_, i) => `Paragraph ${i} ${"word ".repeat(40)}`.trim());
     const chunks = chunkDocument(paragraphs.join("\n\n"), "Doc", { targetChars: 500, overlapChars: 300 });
