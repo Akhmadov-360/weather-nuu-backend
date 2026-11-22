@@ -8,3 +8,6 @@ dist
 
 # Truth list written by `pnpm db:seed --anomalies`
 apps/api/seed-anomalies.manifest.json
+
+# results of pnpm eval:assistant (questions and answers of a real model)
+eval-result*.json
