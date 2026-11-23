@@ -154,13 +154,12 @@ describe("schedule settings", () => {
 
 describe("GET /v1/events", () => {
   async function build() {
-    const { eventsRoutes } = await import("./events.routes.js");
+    const { createEventsRoutes } = await import("./events.routes.js");
     const app = Fastify();
     app.setValidatorCompiler(validatorCompiler);
     app.setSerializerCompiler(serializerCompiler);
     await app.register(errorHandlerPlugin);
-    app.decorate("db", {} as never);
-    await app.register(eventsRoutes);
+    await app.register(createEventsRoutes({ list: async (from, to) => ({ from: from.toISOString(), to: to.toISOString(), events: [], method: { name: "cusum-rules-v1", experimental: true, classes: ["ventilation", "cleaning", "ac"] }, coverageMinutes: 0 }) }));
     return app;
   }
 
@@ -172,6 +171,15 @@ describe("GET /v1/events", () => {
     expect(back.statusCode).toBe(400);
     const missing = await app.inject({ method: "GET", url: "/v1/events" });
     expect(missing.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("answers a good period with the answer of the service in the shape of the contract", async () => {
+    const app = await build();
+    const res = await app.inject({ method: "GET", url: "/v1/events?from=2026-11-23T00:00:00Z&to=2026-11-23T06:00:00Z" });
+    expect(res.statusCode).toBe(200);
+    expect(EventsResponseSchema.safeParse(res.json()).success).toBe(true);
+    expect(res.json().from).toBe("2026-11-23T00:00:00.000Z");
     await app.close();
   });
 });
