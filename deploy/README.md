@@ -60,6 +60,10 @@ SSH через Kerio VPN; пароли и ключи в репозиторий �
 `curl -N -X POST https://weather.nuu.uz/api/v1/assistant/chat -H 'content-type: application/json' -d '{"message":"Привет","lang":"ru","context":"room"}'`.
 `GET /api/v1/assistant/status` отвечает `{"enabled":true|false}`.
 
+## Страницы для поисковых систем (23.11.2026)
+
+Фронтенд при сборке пишет в `dist/` файлы `room.html`, `street.html`, `map.html`, `analytics.html`, `404.html`, `sitemap.xml`, `robots.txt`. nginx отдаёт их по адресам `/room`, `/street`, `/map`, `/analytics`, `/sitemap.xml`, `/robots.txt`; `/` и адреса с закрывающим слешем ведут на `/room` (301); любой другой адрес, который не файл и не страница, отвечает 404 со страницей `404.html` (раньше отвечал 200 главной: так возникают «мягкие 404»). **Порядок выкатки:** сначала фронтенд (новые файлы ничему не мешают), затем конфиг nginx (`nginx -t`, затем reload). Если сделать наоборот, `/room` ответит 404, потому что `room.html` ещё нет. Откат: вернуть прежний файл конфигурации и `reload`.
+
 ## Изменение nginx
 
 Правьте файл в этом репозитории, на сервере сначала сделайте копию текущего, затем замените файл,
