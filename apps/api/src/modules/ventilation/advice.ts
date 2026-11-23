@@ -54,6 +54,8 @@ export type AdviceSettings = {
   keepMargin: number;
   /** The street must not be dirtier than this category (the plan: "not worse than moderate"). */
   worstOutsideCategory: CategoryId;
+  /** A forecast of a cleaner street is worth waiting for only when it comes within this many hours. */
+  waitHours: number;
   /** The street temperature outside which opening a window is not advised, °C. */
   comfortRange: [number, number];
   /** The advice does not change for this long, minutes, except to "do not open" when the street becomes bad. */
@@ -66,6 +68,7 @@ export const DEFAULT_SETTINGS: AdviceSettings = {
   minGain: 3,
   keepMargin: 1,
   worstOutsideCategory: "moderate",
+  waitHours: 6,
   comfortRange: [-5, 35],
   minHoldMinutes: 10,
 };
@@ -77,6 +80,8 @@ export type Advice = {
   predicted: number | null;
   predictedRange: [number, number] | null;
   gain: number | null;
+  /** For "wait": in about how many hours the forecast promises a street that is clean enough; otherwise `null`. */
+  waitHours: number | null;
   horizonMinutes: number;
   lambdaSource: "data" | "prior";
 };
@@ -96,7 +101,7 @@ function predict(input: AdviceInput, minutes: number, lambda: number): number {
  */
 export function rawAdvice(input: AdviceInput, previous: Verdict | null, settings: AdviceSettings = DEFAULT_SETTINGS): Advice {
   const base = { horizonMinutes: settings.horizonMinutes, lambdaSource: input.lambdaSource };
-  const none = { predicted: null, predictedRange: null, gain: null };
+  const none = { predicted: null, predictedRange: null, gain: null, waitHours: null };
   const standard = getStandard();
 
   if (input.outside === null || !Number.isFinite(input.outside)) return { verdict: "unknown", reason: "no_outdoor_data", ...none, ...base };
@@ -116,15 +121,30 @@ export function rawAdvice(input: AdviceInput, previous: Verdict | null, settings
     ? [predict(input, settings.horizonMinutes, input.lambdaOpenRange[1]), predict(input, settings.horizonMinutes, input.lambdaOpenRange[0])]
     : null;
   const gain = input.inside - predicted;
-  const numbers = { predicted, predictedRange: range, gain };
+  // What the forecast promises: the nearest hour at which the street is clean enough (not worse than the limit) and
+  // cleaner than the room by a real gain. A street that is bad now but promised to be good soon is a reason to wait,
+  // not to give up on the window.
+  const promised = (input.outsideForecast ?? [])
+    .filter((f) => f.hours > 0 && f.hours <= settings.waitHours)
+    .sort((a, b) => a.hours - b.hours)
+    .find((f) => {
+      const c = categorize(standard, "pm25", f.value);
+      return c !== null && rank(c) <= rank(settings.worstOutsideCategory) && input.inside - f.value >= Math.max(settings.gainOn * input.inside, settings.minGain);
+    });
+  const waiting = promised ? { waitHours: Math.round(promised.hours * 10) / 10 } : null;
+  const numbers = { predicted, predictedRange: range, gain, waitHours: null as number | null };
 
   // The street is worse than the room, or dirtier than the limit: opening only makes it worse.
   const worseLimit = previous === "open" ? input.inside + settings.keepMargin : input.inside;
   if (input.outside >= worseLimit) {
-    return { verdict: "dont_open", reason: "outside_worse", ...numbers, ...base };
+    return waiting
+      ? { verdict: "wait", reason: "forecast_better", ...numbers, ...waiting, ...base }
+      : { verdict: "dont_open", reason: "outside_worse", ...numbers, ...base };
   }
   if (outsideCategory !== null && rank(outsideCategory) > rank(settings.worstOutsideCategory)) {
-    return { verdict: "dont_open", reason: "outside_dirty", ...numbers, ...base };
+    return waiting
+      ? { verdict: "wait", reason: "forecast_better", ...numbers, ...waiting, ...base }
+      : { verdict: "dont_open", reason: "outside_dirty", ...numbers, ...base };
   }
 
   // An open window is kept (see keepMargin); a closed one is opened only for a real gain.
@@ -135,8 +155,7 @@ export function rawAdvice(input: AdviceInput, previous: Verdict | null, settings
   if (enough || betterCategory) return { verdict: "open", reason: "outside_cleaner", ...numbers, ...base };
 
   // Not worth it now: if the forecast promises a clearly cleaner street in the next hours, wait.
-  const promised = (input.outsideForecast ?? []).find((f) => f.hours > 0 && input.inside - f.value >= Math.max(settings.gainOn * input.inside, settings.minGain));
-  if (promised) return { verdict: "wait", reason: "forecast_better", ...numbers, ...base };
+  if (waiting) return { verdict: "wait", reason: "forecast_better", ...numbers, ...waiting, ...base };
   return { verdict: "dont_open", reason: "no_gain", ...numbers, ...base };
 }
 
@@ -151,7 +170,11 @@ export function nextAdvice(state: AdviceState | null, input: AdviceInput, nowMs:
   if (!state || raw.verdict === state.verdict) {
     return { advice: raw, state: state && raw.verdict === state.verdict ? state : { verdict: raw.verdict, since: nowMs } };
   }
-  const urgent = raw.verdict === "dont_open" && (raw.reason === "outside_worse" || raw.reason === "outside_dirty" || raw.reason === "comfort");
+  // A change to "do not open" because of the street or the weather is not delayed; neither is a "wait" that follows an open
+  // window (the only way to get it then is a street that has turned bad).
+  const urgent =
+    (raw.verdict === "dont_open" && (raw.reason === "outside_worse" || raw.reason === "outside_dirty" || raw.reason === "comfort")) ||
+    (raw.verdict === "wait" && state.verdict === "open");
   const held = nowMs - state.since < settings.minHoldMinutes * 60_000 && !urgent;
   if (held) {
     // Keep the last verdict, with the numbers of now so that the reader sees the present state.

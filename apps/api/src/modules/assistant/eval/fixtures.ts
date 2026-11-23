@@ -61,6 +61,7 @@ export function evalRegistry(knowledge?: KnowledgeSearch): ToolRegistry {
       predicted: 17.6,
       predictedRange: [14.9, 24.3],
       gain: 30.6,
+      waitHours: null,
       lambda: { value: 5, source: "prior", verified: false, range: null },
       forecast: [{ hours: 1, value: 18.9 }],
     })),

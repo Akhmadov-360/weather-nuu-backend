@@ -39,6 +39,8 @@ export const VentilationAdviceSchema = z.object({
   predictedRange: z.tuple([z.number(), z.number()]).nullable(),
   /** How much lower the dust inside is expected to be, µg/m³. */
   gain: z.number().nullable(),
+  /** For "wait": in about how many hours the forecast promises a clean enough street; otherwise `null`. */
+  waitHours: z.number().nullable(),
   /** The speed of air exchange with the window open that the estimate used. */
   lambda: z.object({
     value: z.number().positive(),

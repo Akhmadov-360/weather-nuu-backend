@@ -56,6 +56,28 @@ describe("rawAdvice: the rule", () => {
     expect(rawAdvice(input({ outside: null }), null)).toMatchObject({ verdict: "unknown", reason: "no_outdoor_data", predicted: null });
   });
 
+  it("says wait, and for how long, when the street is bad now but the forecast promises a clean one soon", () => {
+    // 40 outside is dirty (above moderate); the forecast gives 30 in two hours, 25 in three.
+    const a = rawAdvice(input({ inside: 49, outside: 40, outsideForecast: [{ hours: 3, value: 25 }, { hours: 1, value: 38 }, { hours: 2, value: 30 }] }), null);
+    expect(a).toMatchObject({ verdict: "wait", reason: "forecast_better", waitHours: 2 });
+  });
+
+  it("says wait also when the street is as dirty as the room, if the forecast promises a clean one", () => {
+    const a = rawAdvice(input({ inside: 30, outside: 31, outsideForecast: [{ hours: 2, value: 12 }] }), null);
+    expect(a).toMatchObject({ verdict: "wait", waitHours: 2 });
+  });
+
+  it("does not say wait when the promised street is still dirty, too far away, or not cleaner than the room by a real gain", () => {
+    expect(rawAdvice(input({ inside: 80, outside: 60, outsideForecast: [{ hours: 2, value: 45 }] }), null).verdict).toBe("dont_open");
+    expect(rawAdvice(input({ inside: 49, outside: 40, outsideForecast: [{ hours: 9, value: 10 }] }), null)).toMatchObject({ verdict: "dont_open", reason: "outside_dirty", waitHours: null });
+    expect(rawAdvice(input({ inside: 40, outside: 45, outsideForecast: [{ hours: 2, value: 33 }] }), null).verdict).toBe("dont_open");
+    expect(rawAdvice(input({ inside: 49, outside: 40, outsideForecast: [{ hours: -1, value: 5 }, { hours: 0, value: 5 }] }), null).verdict).toBe("dont_open");
+  });
+
+  it("leaves a bad weather as a plain no: waiting does not make the window comfortable", () => {
+    expect(rawAdvice(input({ inside: 49, outside: 10, outsideTemp: -20, outsideForecast: [{ hours: 2, value: 5 }] }), null)).toMatchObject({ verdict: "dont_open", reason: "comfort" });
+  });
+
   it("says wait when opening is no good now but the forecast promises a clean street soon", () => {
     const a = rawAdvice(input({ inside: 30, outside: 26, outsideForecast: [{ hours: 2, value: 12 }] }), null);
     expect(a).toMatchObject({ verdict: "wait", reason: "forecast_better" });
@@ -96,6 +118,14 @@ describe("nextAdvice: the memory", () => {
     expect(worse.state.since).toBe(2 * MIN);
     const cold = nextAdvice(start.state, input({ outsideTemp: -20 }), 2 * MIN);
     expect(cold.advice.reason).toBe("comfort");
+  });
+
+  it("changes at once from an open window to wait when the street turns bad, and the wait is not held back", () => {
+    const start = nextAdvice(null, input({ inside: 60, outside: 5 }), 0);
+    expect(start.advice.verdict).toBe("open");
+    const now = nextAdvice(start.state, input({ inside: 49, outside: 40, outsideForecast: [{ hours: 2, value: 12 }] }), 2 * MIN);
+    expect(now.advice).toMatchObject({ verdict: "wait", waitHours: 2 });
+    expect(now.state.since).toBe(2 * MIN);
   });
 
   it("lets a calm change through after the hold and restarts the clock", () => {
