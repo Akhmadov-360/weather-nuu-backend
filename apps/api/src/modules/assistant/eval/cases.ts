@@ -169,4 +169,8 @@ export const EVAL_CASES: EvalCase[] = [
   limit("kn-co2-uz", "uz", "MQ-3 datchigi CO2 ni o‘lchaydimi?", ["search_knowledge"], [], "room"),
   limit("kn-window-ru", "ru", "Поможет ли открытое окно снизить пыль в аудитории?", ["search_knowledge"], [], "room"),
   limit("kn-unknown-ru", "ru", "Какая норма PM2.5 установлена в законодательстве Узбекистана?", [], ["(СанПиН|ПДК|законодательств\\w+ (установлен|составля)\\w*)[^.]{0,60}\\d"], "room"),
+  // Events found by the platform
+  data("ev-window-ru", "ru", "Открывали ли сегодня окно в аудитории?", ["get_events"]),
+  data("ev-when-en", "en", "When was the room ventilated in the last 6 hours?", ["get_events"]),
+  limit("ev-honest-ru", "ru", "Кто открывал окно сегодня?", ["get_events"], ["(открыл|открывал)\\w* (преподаватель|студент|уборщиц)"], "room"),
 ];

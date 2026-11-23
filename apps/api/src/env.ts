@@ -35,6 +35,11 @@ const EnvSchema = z.object({
   ASSISTANT_CACHE_TTL_MIN: z.coerce.number().int().min(0).default(360),
   // Where the request counters live: in this process (one API process) or in PostgreSQL (several share them).
   ASSISTANT_RATE_STORE: z.enum(["memory", "postgres"]).default("memory"),
+  // The lessons of the auditorium, local time ("13:30,15:10"): without them the events "start/end of a lesson" are not told.
+  EVENTS_LESSON_STARTS: z.string().optional(),
+  EVENTS_LESSON_ENDS: z.string().optional(),
+  // Local time of the station against UTC, minutes (Tashkent: +5 h).
+  EVENTS_UTC_OFFSET_MIN: z.coerce.number().int().min(-720).max(840).default(300),
   ASSISTANT_RATE_PER_MIN: z.coerce.number().int().positive().default(10),
   ASSISTANT_RATE_PER_HOUR: z.coerce.number().int().positive().default(60),
   // One ceiling for the whole service, under the free-tier quota of the model.
