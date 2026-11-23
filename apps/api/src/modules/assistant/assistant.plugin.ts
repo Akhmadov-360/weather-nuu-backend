@@ -14,6 +14,7 @@ import { AnswerCache } from "./answer-cache.js";
 import { pool } from "../../db/client.js";
 import { createRateLimiter } from "./rate-limiter.js";
 import { createSharedRateLimiter, PgHitStore, withFallback } from "./rate-store.js";
+import { createEventsTool } from "./tools/events-tool.js";
 import { createKnowledgeTool } from "./tools/knowledge-tool.js";
 import { ToolRegistry } from "./tools/registry.js";
 import { createSensorTools, sensorToolDepsFrom } from "./tools/sensor-tools.js";
@@ -25,6 +26,9 @@ export const assistantRoutes: FastifyPluginAsyncZod = async (app) => {
     app.log.warn({ provider: env.ASSISTANT_PROVIDER }, "assistant is enabled but has no provider to use: it will report 503");
   }
   const tools = createSensorTools(sensorToolDepsFrom(new SensorsService(new SensorsRepo(app.db)), new SensorsAggregateRepo(app.db)));
+
+  // Events found in the readings (the module of the events registers its service before this one).
+  if (app.hasDecorator("eventsService")) tools.push(createEventsTool(app.eventsService.list));
 
   // The knowledge base: the index file is read once at start. Without a key the search still works by keywords.
   const indexPath = env.KNOWLEDGE_INDEX_PATH ?? fileURLToPath(new URL("../../../knowledge/index.json", import.meta.url));

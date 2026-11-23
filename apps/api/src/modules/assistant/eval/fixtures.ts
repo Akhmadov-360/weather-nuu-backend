@@ -1,5 +1,6 @@
 import type { AggregateBucketRow, SensorReading } from "@weather/contracts";
 import type { KnowledgeSearch } from "../../knowledge/service.js";
+import { createEventsTool } from "../tools/events-tool.js";
 import { createKnowledgeTool } from "../tools/knowledge-tool.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { createSensorTools } from "../tools/sensor-tools.js";
@@ -38,6 +39,15 @@ export function evalRegistry(knowledge?: KnowledgeSearch): ToolRegistry {
     latest: async (source) => reading(source),
     aggregate: async ({ source, from }) => [bucket(source, from)],
   });
+  tools.push(
+    createEventsTool(async (from, to) => ({
+      from: from.toISOString(),
+      to: to.toISOString(),
+      events: [{ cls: "ventilation", start: "2026-11-22T09:26:00.000Z", detected: "2026-11-22T09:27:00.000Z", confirmedByStreet: true }],
+      method: { name: "cusum-rules-v1", experimental: true, classes: ["ventilation", "cleaning", "ac"] },
+      coverageMinutes: 340,
+    })),
+  );
   if (knowledge) tools.push(createKnowledgeTool(knowledge));
   return new ToolRegistry(tools);
 }
