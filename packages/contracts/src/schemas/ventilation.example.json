@@ -1,0 +1,22 @@
+{
+  "advice": {
+    "verdict": "open",
+    "reason": "outside_cleaner",
+    "computedAt": "2026-11-23T10:05:00.000Z",
+    "inside": { "pm25": 48.2, "at": "2026-11-23T10:04:00.000Z" },
+    "outside": {
+      "pm25": 14.1,
+      "at": "2026-11-23T10:00:00.000Z",
+      "kind": "model",
+      "source": "CAMS ENSEMBLE via Open-Meteo",
+      "attributionUrl": "https://open-meteo.com/"
+    },
+    "outsideTemp": 9.3,
+    "horizonMinutes": 15,
+    "predicted": 17.6,
+    "predictedRange": [14.9, 24.3],
+    "gain": 30.6,
+    "lambda": { "value": 5, "source": "prior", "verified": false, "range": null },
+    "forecast": [{ "hours": 1, "value": 18.9 }, { "hours": 2, "value": 24.9 }]
+  }
+}

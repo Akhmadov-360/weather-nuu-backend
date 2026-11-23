@@ -2,6 +2,7 @@ import type { AggregateBucketRow, SensorReading } from "@weather/contracts";
 import type { KnowledgeSearch } from "../../knowledge/service.js";
 import { createEventsTool } from "../tools/events-tool.js";
 import { createKnowledgeTool } from "../tools/knowledge-tool.js";
+import { createVentilationTool } from "../tools/ventilation-tool.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { createSensorTools } from "../tools/sensor-tools.js";
 
@@ -46,6 +47,22 @@ export function evalRegistry(knowledge?: KnowledgeSearch): ToolRegistry {
       events: [{ cls: "ventilation", start: "2026-11-22T09:26:00.000Z", detected: "2026-11-22T09:27:00.000Z", confirmedByStreet: true }],
       method: { name: "cusum-rules-v1", experimental: true, classes: ["ventilation", "cleaning", "ac"] },
       coverageMinutes: 340,
+    })),
+  );
+  tools.push(
+    createVentilationTool(async () => ({
+      verdict: "open",
+      reason: "outside_cleaner",
+      computedAt: EVAL_NOW.toISOString(),
+      inside: { pm25: 48.2, at: EVAL_NOW.toISOString() },
+      outside: { pm25: 14.1, at: EVAL_NOW.toISOString(), kind: "model", source: "CAMS ENSEMBLE via Open-Meteo", attributionUrl: "https://open-meteo.com/" },
+      outsideTemp: 9.3,
+      horizonMinutes: 15,
+      predicted: 17.6,
+      predictedRange: [14.9, 24.3],
+      gain: 30.6,
+      lambda: { value: 5, source: "prior", verified: false, range: null },
+      forecast: [{ hours: 1, value: 18.9 }],
     })),
   );
   if (knowledge) tools.push(createKnowledgeTool(knowledge));

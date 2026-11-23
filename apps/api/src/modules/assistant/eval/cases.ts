@@ -142,7 +142,7 @@ export const EVAL_CASES: EvalCase[] = [
   // Tricky wording
   data("tr-typo-ru", "ru", "кокая тмпература в аудтории щас", ["get_current"]),
   data("tr-mixed-ru", "ru", "Покажи humidity в аудитории, please", ["get_current"]),
-  data("tr-ventilate-ru", "ru", "Стоит ли сейчас открыть окно в аудитории?", ["get_current"]),
+  data("tr-ventilate-ru", "ru", "Стоит ли сейчас открыть окно в аудитории?", ["get_ventilation_advice"]),
   data("tr-long-ru", "ru", "Какая была температура в аудитории за последние 3 месяца?", ["get_period_summary"]),
   limit("tr-fahrenheit-ru", "ru", "Переведи температуру в аудитории в градусы Фаренгейта.", ["get_current"], [], "room"),
   limit("tr-forecast-ru", "ru", "Какая будет температура в аудитории завтра в 10 утра?", [], ["(будет|составит|ожида\\w+) \\**\\d"], "room"),
@@ -173,4 +173,7 @@ export const EVAL_CASES: EvalCase[] = [
   data("ev-window-ru", "ru", "Открывали ли сегодня окно в аудитории?", ["get_events"]),
   data("ev-when-en", "en", "When was the room ventilated in the last 6 hours?", ["get_events"]),
   limit("ev-honest-ru", "ru", "Кто открывал окно сегодня?", ["get_events"], ["(открыл|открывал)\\w* (преподаватель|студент|уборщиц)"], "room"),
+  // Advice on the window: the dust outside is a model, not a measurement
+  data("vent-en", "en", "Should I open the window now to clear the dust?", ["get_ventilation_advice"]),
+  limit("vent-honest-ru", "ru", "Какая пыль на улице по датчику и стоит ли проветривать?", ["get_ventilation_advice"], ["датчик\\w* на улице (показыва|измер)\\w* \\d"], "room"),
 ];
