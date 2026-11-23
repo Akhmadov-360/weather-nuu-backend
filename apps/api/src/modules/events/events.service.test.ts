@@ -200,7 +200,8 @@ describe("the tool get_events", () => {
     expect(result.ok).toBe(true);
     const body = JSON.parse(result.content);
     expect(body.count).toBe(1);
-    expect(body.events[0]).toEqual({ type: "ventilation", start: "2026-11-23T09:26:00.000Z", confirmedByStreetAir: true });
+    expect(body.events[0]).toEqual({ type: "ventilation", start: "2026-11-23T09:26:00.000Z", startLocalTime: "14:26", confirmedByStreetAir: true });
+    expect(body.note).toMatch(/startLocalTime/);
     expect(body.note).toMatch(/system detected/);
     expect(body.note).toMatch(/synthetic/);
   });
