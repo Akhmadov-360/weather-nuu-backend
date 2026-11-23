@@ -114,7 +114,7 @@ export class VentilationService {
     if (!inside) {
       // Nothing to improve or to compare: the Room kit is silent.
       this.state = null;
-      value = { ...common, verdict: "unknown", reason: "no_indoor_data", predicted: null, predictedRange: null, gain: null };
+      value = { ...common, verdict: "unknown", reason: "no_indoor_data", predicted: null, predictedRange: null, gain: null, waitHours: null };
     } else {
       const result = nextAdvice(
         this.state,
@@ -140,6 +140,7 @@ export class VentilationService {
         predicted: round(a.predicted),
         predictedRange: a.predictedRange ? [Math.round(a.predictedRange[0] * 10) / 10, Math.round(a.predictedRange[1] * 10) / 10] : null,
         gain: round(a.gain),
+        waitHours: a.waitHours,
       };
     }
     this.last = { at: now.getTime(), value };

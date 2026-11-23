@@ -216,6 +216,7 @@ describe("the tool get_ventilation_advice", () => {
     predicted: 17.6,
     predictedRange: [15, 24],
     gain: 30.4,
+    waitHours: null,
     lambda: { value: 5, source: "prior", verified: false, range: null },
     forecast: [{ hours: 1, value: 18.9 }],
   };
