@@ -1,5 +1,5 @@
 import type { AggregateBucketRow, EventsResponse, RoomEvent, RoomEventClass } from "@weather/contracts";
-import { detectEvents } from "./detect.js";
+import { detectEvents, type DetectedEvent } from "./detect.js";
 import type { Sample } from "./synthetic.js";
 
 const MINUTE = 60_000;
@@ -73,6 +73,8 @@ export function eventsFromRows(input: {
   to: Date;
   schedule: Schedule;
   utcOffsetMin: number;
+  /** Called with every stretch of the series and the events the detector found in it (the estimation of the speed of air exchange needs them). */
+  onSegment?: (samples: Sample[], events: DetectedEvent[]) => void;
 }): EventsResponse {
   const { from, to, schedule } = input;
   const dayZero = localMidnight(from.getTime(), input.utcOffsetMin);
@@ -85,7 +87,9 @@ export function eventsFromRows(input: {
   const events: RoomEvent[] = [];
   for (const seg of segments(room)) {
     const samples: Sample[] = seg.map((p) => ({ t: (p.minute * MINUTE - dayZero) / MINUTE, temp: p.temp, hum: p.hum, pm25: p.pm25, outTemp: streetTemp.get(p.minute) ?? p.temp, outHum: p.hum }));
-    for (const e of detectEvents(samples, schedule)) {
+    const detected = detectEvents(samples, schedule);
+    input.onSegment?.(samples, detected);
+    for (const e of detected) {
       const start = new Date(dayZero + e.startMin * MINUTE);
       if (start < from || start > to) continue;
       const startMinute = Math.round(start.getTime() / MINUTE);

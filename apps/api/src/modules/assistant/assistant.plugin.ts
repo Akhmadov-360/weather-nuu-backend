@@ -16,6 +16,7 @@ import { createRateLimiter } from "./rate-limiter.js";
 import { createSharedRateLimiter, PgHitStore, withFallback } from "./rate-store.js";
 import { createEventsTool } from "./tools/events-tool.js";
 import { createKnowledgeTool } from "./tools/knowledge-tool.js";
+import { createVentilationTool } from "./tools/ventilation-tool.js";
 import { ToolRegistry } from "./tools/registry.js";
 import { createSensorTools, sensorToolDepsFrom } from "./tools/sensor-tools.js";
 
@@ -28,6 +29,7 @@ export const assistantRoutes: FastifyPluginAsyncZod = async (app) => {
   const tools = createSensorTools(sensorToolDepsFrom(new SensorsService(new SensorsRepo(app.db)), new SensorsAggregateRepo(app.db)));
 
   // Events found in the readings (the module of the events registers its service before this one).
+  if (app.hasDecorator("ventilationService")) tools.push(createVentilationTool(app.ventilationService.advice));
   if (app.hasDecorator("eventsService")) tools.push(createEventsTool(app.eventsService.list, { utcOffsetMin: env.EVENTS_UTC_OFFSET_MIN }));
 
   // The knowledge base: the index file is read once at start. Without a key the search still works by keywords.

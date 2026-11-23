@@ -8,6 +8,7 @@ import { errorHandlerPlugin } from "./plugins/error-handler.js";
 import { websocketPlugin } from "./plugins/websocket.js";
 import { deviceAuthPlugin } from "./plugins/device-auth.js";
 import { eventsPlugin } from "./modules/events/events.plugin.js";
+import { ventilationPlugin } from "./modules/ventilation/ventilation.plugin.js";
 import { sensorsRoutes } from "./modules/sensors/sensors.routes.js";
 import { cansatRoutes } from "./modules/cansat/cansat.routes.js";
 import { exportRoutes } from "./modules/export/export.routes.js";
@@ -44,6 +45,7 @@ export async function buildApp() {
   await app.register(cansatRoutes);
   await app.register(exportRoutes);
   await app.register(eventsPlugin);
+  await app.register(ventilationPlugin);
   await app.register(assistantRoutes);
 
   registerHourlySnapshot(app);

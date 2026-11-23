@@ -24,7 +24,7 @@ describe("the question set", () => {
   });
 
   it("asks for tools that exist", () => {
-    const known = new Set(["get_current", "get_period_summary", "compare_room_street", "search_knowledge", "get_events"]);
+    const known = new Set(["get_current", "get_period_summary", "compare_room_street", "search_knowledge", "get_events", "get_ventilation_advice"]);
     for (const c of EVAL_CASES) for (const t of [...c.expectTools, ...(c.forbidTools ?? [])]) expect(known.has(t), `${c.id}: ${t}`).toBe(true);
   });
 

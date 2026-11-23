@@ -40,6 +40,9 @@ const EnvSchema = z.object({
   EVENTS_LESSON_ENDS: z.string().optional(),
   // Local time of the station against UTC, minutes (Tashkent: +5 h).
   EVENTS_UTC_OFFSET_MIN: z.coerce.number().int().min(-720).max(840).default(300),
+  // The point of the station for the model dust outside (the campus of the university, Tashkent).
+  OUTDOOR_LAT: z.coerce.number().min(-90).max(90).default(41.343),
+  OUTDOOR_LON: z.coerce.number().min(-180).max(180).default(69.205),
   ASSISTANT_RATE_PER_MIN: z.coerce.number().int().positive().default(10),
   ASSISTANT_RATE_PER_HOUR: z.coerce.number().int().positive().default(60),
   // One ceiling for the whole service, under the free-tier quota of the model.
