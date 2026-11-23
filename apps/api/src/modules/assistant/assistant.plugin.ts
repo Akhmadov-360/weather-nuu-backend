@@ -10,6 +10,7 @@ import { GeminiEmbeddingProvider } from "../knowledge/embedding.js";
 import { KnowledgeIndex } from "../knowledge/index-search.js";
 import { KnowledgeService } from "../knowledge/service.js";
 import { FileKnowledgeStore } from "../knowledge/store.js";
+import { AnswerCache } from "./answer-cache.js";
 import { createRateLimiter } from "./rate-limiter.js";
 import { createKnowledgeTool } from "./tools/knowledge-tool.js";
 import { ToolRegistry } from "./tools/registry.js";
@@ -17,7 +18,7 @@ import { createSensorTools, sensorToolDepsFrom } from "./tools/sensor-tools.js";
 
 /** The production wiring: settings from the environment, the real sensor services behind the tools. */
 export const assistantRoutes: FastifyPluginAsyncZod = async (app) => {
-  const provider = createProvider(env);
+  const provider = createProvider(env, (event) => app.log.warn({ capacity: event }, "assistant model capacity"));
   if (env.ASSISTANT_ENABLED && !provider) {
     app.log.warn({ provider: env.ASSISTANT_PROVIDER }, "assistant is enabled but has no provider to use: it will report 503");
   }
@@ -52,6 +53,7 @@ export const assistantRoutes: FastifyPluginAsyncZod = async (app) => {
       maxOutputTokens: env.ASSISTANT_MAX_OUTPUT_TOKENS,
       now: () => new Date(),
       pingMs: 15_000,
+      cache: new AnswerCache({ ttlMs: env.ASSISTANT_CACHE_TTL_MIN * 60_000 }),
     }),
   );
 };

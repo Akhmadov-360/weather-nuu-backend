@@ -45,7 +45,11 @@ export class ProviderError extends Error {
   }
 }
 
+export type ModelUsageSnapshot = { model: string; today: number; limit: number | null; cooling: boolean };
+
 export interface ChatProvider {
+  /** What each model has used today (providers that count). For the log. */
+  usageSnapshot?(): ModelUsageSnapshot[];
   /** Streams the next model turn. Must stop quietly (no exception) when `signal` is aborted. */
   generate(input: GenerateInput): AsyncIterable<ProviderChunk>;
 }
