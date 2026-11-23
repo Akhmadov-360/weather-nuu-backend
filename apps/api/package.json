@@ -20,7 +20,8 @@
     "kb:bench": "tsx src/dev/kb-bench.ts",
     "kb:ingest": "tsx src/dev/kb-ingest.ts",
     "kb:eval": "tsx src/dev/kb-eval.ts",
-    "ventilation:eval": "tsx src/dev/ventilation-eval.ts"
+    "ventilation:eval": "tsx src/dev/ventilation-eval.ts",
+    "ventilation:advice-eval": "tsx src/dev/ventilation-advice-eval.ts"
   },
   "dependencies": {
     "@fastify/compress": "^8.0.1",
