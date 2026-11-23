@@ -32,6 +32,11 @@ export type SeriesOptions = {
 
 const DAY = 1440;
 
+/** The air exchange of the synthetic room (1/h) and the deposition: the truth against which the estimation of λ is judged. */
+export const SYNTHETIC_ROOM = { aClosed: 0.6, aOpenExtra: 8, k: 0.5 } as const;
+/** λ = a + k with the window closed and wide open. */
+export const SYNTHETIC_LAMBDA = { closed: SYNTHETIC_ROOM.aClosed + SYNTHETIC_ROOM.k, open: SYNTHETIC_ROOM.aClosed + SYNTHETIC_ROOM.aOpenExtra + SYNTHETIC_ROOM.k } as const;
+
 export function mulberry32(seed: number): () => number {
   return () => {
     seed = (seed + 0x6d2b79f5) | 0;
@@ -99,10 +104,9 @@ export function generateSeries(options: SeriesOptions): { samples: Sample[]; tru
   for (let d = 0; d < options.days; d++) for (let m = d * DAY + PEOPLE_FROM; m < d * DAY + PEOPLE_TO && m < minutes; m++) people[m] = 1;
 
   // Parameters of the room (per hour unless said otherwise).
-  const aClosed = 0.6;
-  const aOpenExtra = 8;
+  const { aClosed, aOpenExtra } = SYNTHETIC_ROOM;
   const pClosed = 0.85;
-  const k = 0.5;
+  const { k } = SYNTHETIC_ROOM;
   const sourceBase = 22;
   const sourcePeople = 6;
   const sourceClean = 150;
