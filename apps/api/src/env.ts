@@ -26,6 +26,13 @@ const EnvSchema = z.object({
   // Secrets and model names live only in the server's .env, never in the repository.
   GEMINI_API_KEY: z.string().min(1).optional(),
   ASSISTANT_MODEL: z.string().min(1).optional(),
+  // A second model that takes over while the first is out of quota (each model has its own quota).
+  ASSISTANT_FALLBACK_MODEL: z.string().min(1).optional(),
+  // Requests a day the key allows (the free tier of gemini-3.5-flash-lite: 500). Past it the model is not asked.
+  ASSISTANT_DAILY_LIMIT: z.coerce.number().int().positive().optional(),
+  ASSISTANT_FALLBACK_DAILY_LIMIT: z.coerce.number().int().positive().optional(),
+  // How long an answer that does not depend on the readings is kept, minutes; 0 turns the cache off.
+  ASSISTANT_CACHE_TTL_MIN: z.coerce.number().int().min(0).default(360),
   ASSISTANT_RATE_PER_MIN: z.coerce.number().int().positive().default(10),
   ASSISTANT_RATE_PER_HOUR: z.coerce.number().int().positive().default(60),
   // One ceiling for the whole service, under the free-tier quota of the model.

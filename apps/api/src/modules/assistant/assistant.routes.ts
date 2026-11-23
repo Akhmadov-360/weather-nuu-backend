@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { AssistantStatusSchema, ChatRequestSchema, type AssistantCitation, type AssistantEvent } from "@weather/contracts";
+import { AnswerCache, cacheKey } from "./answer-cache.js";
 import { runAgent } from "./agent-loop.js";
 import { findUnverifiedNumbers } from "./verify-numbers.js";
 import { buildSystemPrompt, exhaustedMessage, PROMPT_VERSION } from "./prompt.js";
@@ -18,7 +19,21 @@ export type AssistantDeps = {
   now: () => Date;
   /** How often a silent stream sends a `: ping` comment. */
   pingMs: number;
+  /** Answers that do not depend on the readings, kept for a while. Off when absent. */
+  cache?: AnswerCache;
 };
+
+/** A kept answer is played back in pieces, so that it arrives the way a new one does. */
+async function* replay(events: AssistantEvent[], signal: AbortSignal): AsyncGenerator<AssistantEvent> {
+  for (const event of events) {
+    if (signal.aborted) return;
+    yield event;
+    if (event.type === "text") await new Promise((resolve) => setTimeout(resolve, 12));
+  }
+}
+
+/** Only the tools whose answer does not change with the readings. */
+const STABLE_TOOLS = new Set(["search_knowledge"]);
 
 /** The address behind nginx: `X-Real-IP` is set by nginx itself, unlike `X-Forwarded-For`, which a visitor can write. */
 function clientKey(request: FastifyRequest): string {
@@ -90,9 +105,14 @@ export function createAssistantRoutes(deps: AssistantDeps): FastifyPluginAsyncZo
       // The sources the tools used, shown with the answer; the same fragment found twice is shown once.
       const citations = new Map<string, AssistantCitation>();
       const knowledge = deps.registry.specs().some((spec) => spec.name === "search_knowledge");
+      // A question with no earlier turns may be answered from the cache, and its answer may go into it.
+      const key = deps.cache?.enabled && history.length === 0 ? cacheKey(lang, message) : null;
+      const cached = key ? deps.cache!.get(key) : null;
+      const sent: AssistantEvent[] = [];
+      let unverified: string[] = [];
 
       try {
-        for await (const event of runAgent({
+        const events = cached ? replay(cached, controller.signal) : runAgent({
           provider,
           registry: deps.registry,
           system: buildSystemPrompt({ lang, context, now, knowledge }),
@@ -113,18 +133,29 @@ export function createAssistantRoutes(deps: AssistantDeps): FastifyPluginAsyncZo
           onProviderError: (error) => {
             providerError = error instanceof ProviderError ? { kind: error.kind, ...(error.status ? { status: error.status } : {}) } : { kind: "unknown" };
           },
-        })) {
+        });
+        for await (const event of events) {
           if (raw.destroyed || raw.writableEnded) break;
           if (event.type === "tool_start") tools.push(event.name);
           if (event.type === "text") answer += event.delta;
+          if (event.type === "done" && !cached && citations.size) {
+            const sources: AssistantEvent = { type: "citations", items: [...citations.values()] };
+            sent.push(sources);
+            raw.write(sse(sources));
+          }
           if (event.type === "done") {
-            if (citations.size) raw.write(sse({ type: "citations", items: [...citations.values()] }));
             outcome = "done";
             inputTokens = event.inputTokens;
             outputTokens = event.outputTokens;
           }
           if (event.type === "error") outcome = "error";
+          sent.push(event);
           raw.write(sse(event));
+        }
+        if (outcome === "done" && !cached) {
+          unverified = findUnverifiedNumbers(answer, toolResults, [message, ...history.map((m) => m.content)].join(" "));
+          // A verified answer that does not depend on the readings is kept for the next person who asks the same.
+          if (key && unverified.length === 0 && tools.every((t) => STABLE_TOOLS.has(t))) deps.cache!.set(key, sent);
         }
       } catch (error) {
         outcome = "error";
@@ -146,9 +177,11 @@ export function createAssistantRoutes(deps: AssistantDeps): FastifyPluginAsyncZo
               outputTokens,
               promptVersion: PROMPT_VERSION,
               outcome,
+              ...(cached ? { cache: "hit" } : {}),
+              ...(provider.usageSnapshot ? { models: provider.usageSnapshot() } : {}),
               ...(providerError ? { providerError } : {}),
               // Figures in the answer that no tool returned (a signal for the evaluation; the visitor is not told).
-              ...(outcome === "done" ? { unverifiedNumbers: findUnverifiedNumbers(answer, toolResults, [message, ...history.map((m) => m.content)].join(" ")) } : {}),
+              ...(outcome === "done" && !cached ? { unverifiedNumbers: unverified } : {}),
             },
           },
           "assistant request",

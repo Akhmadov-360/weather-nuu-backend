@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createProvider } from "./factory.js";
-import { GeminiChatProvider } from "./gemini.js";
+import { CapacityProvider } from "./capacity.js";
 
 describe("createProvider", () => {
   it("gives the scripted provider for fake", () => {
@@ -8,7 +8,7 @@ describe("createProvider", () => {
   });
 
   it("gives Gemini when the key and the model name are set", () => {
-    expect(createProvider({ ASSISTANT_PROVIDER: "gemini", GEMINI_API_KEY: "k", ASSISTANT_MODEL: "m" })).toBeInstanceOf(GeminiChatProvider);
+    expect(createProvider({ ASSISTANT_PROVIDER: "gemini", GEMINI_API_KEY: "k", ASSISTANT_MODEL: "m" })).toBeInstanceOf(CapacityProvider);
   });
 
   it("gives nothing for Gemini without a key or without a model name: the assistant then reports 503", () => {
