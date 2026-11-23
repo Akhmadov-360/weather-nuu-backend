@@ -33,6 +33,8 @@ const EnvSchema = z.object({
   ASSISTANT_FALLBACK_DAILY_LIMIT: z.coerce.number().int().positive().optional(),
   // How long an answer that does not depend on the readings is kept, minutes; 0 turns the cache off.
   ASSISTANT_CACHE_TTL_MIN: z.coerce.number().int().min(0).default(360),
+  // Where the request counters live: in this process (one API process) or in PostgreSQL (several share them).
+  ASSISTANT_RATE_STORE: z.enum(["memory", "postgres"]).default("memory"),
   ASSISTANT_RATE_PER_MIN: z.coerce.number().int().positive().default(10),
   ASSISTANT_RATE_PER_HOUR: z.coerce.number().int().positive().default(60),
   // One ceiling for the whole service, under the free-tier quota of the model.

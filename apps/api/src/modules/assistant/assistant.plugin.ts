@@ -11,7 +11,9 @@ import { KnowledgeIndex } from "../knowledge/index-search.js";
 import { KnowledgeService } from "../knowledge/service.js";
 import { FileKnowledgeStore } from "../knowledge/store.js";
 import { AnswerCache } from "./answer-cache.js";
+import { pool } from "../../db/client.js";
 import { createRateLimiter } from "./rate-limiter.js";
+import { createSharedRateLimiter, PgHitStore, withFallback } from "./rate-store.js";
 import { createKnowledgeTool } from "./tools/knowledge-tool.js";
 import { ToolRegistry } from "./tools/registry.js";
 import { createSensorTools, sensorToolDepsFrom } from "./tools/sensor-tools.js";
@@ -40,16 +42,18 @@ export const assistantRoutes: FastifyPluginAsyncZod = async (app) => {
     app.log.error({ err: error, indexPath }, "knowledge base failed to load: search_knowledge is off");
   }
   const registry = new ToolRegistry(tools);
+  const limits = { perMinute: env.ASSISTANT_RATE_PER_MIN, perHour: env.ASSISTANT_RATE_PER_HOUR, globalPerMinute: env.ASSISTANT_RATE_GLOBAL_PER_MIN };
+  const local = createRateLimiter(limits);
+  const limiter =
+    env.ASSISTANT_RATE_STORE === "postgres"
+      ? withFallback(createSharedRateLimiter(new PgHitStore(pool), limits), local, (error) => app.log.error({ err: error }, "assistant rate limit: the shared store failed, counting in memory"))
+      : local;
   await app.register(
     createAssistantRoutes({
       enabled: env.ASSISTANT_ENABLED,
       provider,
       registry,
-      limiter: createRateLimiter({
-        perMinute: env.ASSISTANT_RATE_PER_MIN,
-        perHour: env.ASSISTANT_RATE_PER_HOUR,
-        globalPerMinute: env.ASSISTANT_RATE_GLOBAL_PER_MIN,
-      }),
+      limiter,
       maxOutputTokens: env.ASSISTANT_MAX_OUTPUT_TOKENS,
       now: () => new Date(),
       pingMs: 15_000,
