@@ -28,7 +28,7 @@ export const assistantRoutes: FastifyPluginAsyncZod = async (app) => {
   const tools = createSensorTools(sensorToolDepsFrom(new SensorsService(new SensorsRepo(app.db)), new SensorsAggregateRepo(app.db)));
 
   // Events found in the readings (the module of the events registers its service before this one).
-  if (app.hasDecorator("eventsService")) tools.push(createEventsTool(app.eventsService.list));
+  if (app.hasDecorator("eventsService")) tools.push(createEventsTool(app.eventsService.list, { utcOffsetMin: env.EVENTS_UTC_OFFSET_MIN }));
 
   // The knowledge base: the index file is read once at start. Without a key the search still works by keywords.
   const indexPath = env.KNOWLEDGE_INDEX_PATH ?? fileURLToPath(new URL("../../../knowledge/index.json", import.meta.url));
