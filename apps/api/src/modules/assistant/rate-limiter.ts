@@ -5,7 +5,7 @@ export type RateLimitResult = { ok: true } | { ok: false; retryAfterSeconds: num
 
 export type RateLimiter = {
   /** Counts the request if it is allowed. A refused request is not counted, so refusing is free. */
-  check(key: string): RateLimitResult;
+  check(key: string): RateLimitResult | Promise<RateLimitResult>;
 };
 
 /**
@@ -18,7 +18,7 @@ export function createRateLimiter(options: {
   perHour: number;
   globalPerMinute: number;
   now?: () => number;
-}): RateLimiter {
+}): { check(key: string): RateLimitResult } {
   const now = options.now ?? Date.now;
   const byKey = new Map<string, number[]>();
   let global: number[] = [];

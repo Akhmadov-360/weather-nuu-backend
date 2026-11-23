@@ -65,5 +65,5 @@ export async function prepareTestDatabase(url: string): Promise<void> {
 export async function resetTables(pool: Pool): Promise<void> {
   const { rows } = await pool.query<{ db: string }>("SELECT current_database() AS db");
   if (!rows[0]?.db.endsWith("_test")) throw new Error(`resetTables on "${rows[0]?.db}": not a test database`);
-  await pool.query("TRUNCATE TABLE sensor_data, cansat_data RESTART IDENTITY");
+  await pool.query("TRUNCATE TABLE sensor_data, cansat_data, assistant_rate_hits RESTART IDENTITY");
 }

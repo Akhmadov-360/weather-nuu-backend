@@ -64,7 +64,7 @@ export function createAssistantRoutes(deps: AssistantDeps): FastifyPluginAsyncZo
       if (!deps.enabled || !provider) {
         return reply.status(503).send({ error: { code: "disabled", message: "The assistant is not available" } });
       }
-      const verdict = deps.limiter.check(clientKey(request));
+      const verdict = await deps.limiter.check(clientKey(request));
       if (!verdict.ok) {
         return reply
           .header("retry-after", String(verdict.retryAfterSeconds))

@@ -1,4 +1,4 @@
-import { pgTable, serial, real, integer, varchar, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, bigserial, real, integer, varchar, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 
 /**
  * Mirrors the existing `sensor_data` table (source: room|street) but the
@@ -59,5 +59,22 @@ export const cansatData = pgTable(
   },
   (table) => ({
     recordedAtIdx: index("cansat_data_recorded_at_idx").on(table.recordedAt),
+  }),
+);
+
+/**
+ * Requests to the assistant, for the rate limit that several API processes share
+ * (ASSISTANT_RATE_STORE=postgres). Rows older than an hour are deleted by the limiter itself.
+ */
+export const assistantRateHits = pgTable(
+  "assistant_rate_hits",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    key: text("key").notNull(),
+    at: timestamp("at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => ({
+    keyAtIdx: index("assistant_rate_hits_key_at_idx").on(table.key, table.at),
+    atIdx: index("assistant_rate_hits_at_idx").on(table.at),
   }),
 );
